@@ -13,6 +13,7 @@ export const OVERLAY_CSS = `
 .card {
   --bg: #faf9f5; --panel: #ffffff; --ink: #1f1e1c; --muted: #6f6a62;
   --line: #e3ded3; --accent: #d97757; --human: #6b8f9c; --assistant: #b8a68a;
+  --diff-left: #3f7f6f; --diff-right: #9a6fb0;
   display: flex; flex-direction: column;
   width: min(1100px, 100%); height: min(760px, 100%);
   background: var(--bg); color: var(--ink);
@@ -24,6 +25,7 @@ export const OVERLAY_CSS = `
   .card {
     --bg: #1f1e1c; --panel: #262523; --ink: #f2efe7; --muted: #9a938a;
     --line: #38352f; --accent: #d97757; --human: #7fa8b6; --assistant: #c4b294;
+    --diff-left: #5fae98; --diff-right: #b894cd;
   }
 }
 
@@ -40,21 +42,6 @@ button.tool:hover { border-color: var(--accent); color: var(--accent); }
 button.tool:disabled { opacity: .5; cursor: default; }
 
 .canvas { position: relative; flex: 1; overflow: hidden; background: var(--panel); }
-svg { display: block; width: 100%; height: 100%; cursor: grab; }
-svg.dragging { cursor: grabbing; }
-
-.edge { fill: none; stroke: var(--line); stroke-width: 1.5; }
-.edge.active { stroke: var(--accent); stroke-width: 2.5; }
-.node { cursor: pointer; }
-.node .hit { fill: transparent; }
-.dot { stroke: var(--panel); stroke-width: 2; }
-.dot.human { fill: var(--human); }
-.dot.assistant { fill: var(--assistant); }
-.node.off .dot { opacity: .45; }
-.node:hover .dot { stroke: var(--accent); }
-.leaf-ring { fill: none; stroke: var(--accent); stroke-width: 2; }
-.fork-count { font-size: 9px; fill: var(--muted); }
-
 .tip {
   position: absolute; max-width: 340px; pointer-events: none; opacity: 0;
   transition: opacity .12s; padding: 9px 11px; border-radius: 9px;

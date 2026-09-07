@@ -1,9 +1,9 @@
-import { fetchConversation, getConversationId, TreesError } from './api';
+import { buildTree } from '@claude-trees/core';
+import type { ConversationTree } from '@claude-trees/core';
+import { fetchTreeSource, getConversationId, TreesError } from './api';
 import { installDebugHelper } from './dom';
 import { NavigationError, switchToNode } from './navigate';
 import { TreeOverlay } from './overlay';
-import { buildTree } from './tree';
-import type { ConversationTree } from './types';
 
 let overlay: TreeOverlay | null = null;
 let cached: ConversationTree | null = null;
@@ -15,12 +15,12 @@ async function loadTree(force: boolean): Promise<ConversationTree> {
   if (!conversationId) {
     throw new TreesError('Open a conversation first — this page has no conversation to map.');
   }
-  if (!force && cached?.conversationId === conversationId) return cached;
+  if (!force && cached?.id === conversationId) return cached;
   if (!force && inFlight) return inFlight;
 
-  inFlight = fetchConversation(conversationId)
-    .then((raw) => {
-      cached = buildTree(raw);
+  inFlight = fetchTreeSource(conversationId)
+    .then((source) => {
+      cached = buildTree(source);
       return cached;
     })
     .finally(() => {

@@ -1,0 +1,13 @@
+{
+  "name": "@claude-trees/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": { "claude-trees": "./dist/cli.js" },
+  "scripts": {
+    "build": "vite build --config vite.config.web.ts && vite build --config vite.config.node.ts"
+  },
+  "dependencies": {
+    "@claude-trees/core": "*"
+  }
+}

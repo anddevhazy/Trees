@@ -1,6 +1,6 @@
 import { click, findMessageElements, findPagerFor, scrollToMessage } from './dom';
-import { pathTo } from './tree';
-import type { ConversationTree } from './types';
+import { pathTo } from '@claude-trees/core';
+import type { ConversationTree } from '@claude-trees/core';
 
 export class NavigationError extends Error {}
 

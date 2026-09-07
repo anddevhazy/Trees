@@ -9,11 +9,10 @@
     "noUnusedParameters": true,
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
-    "exactOptionalPropertyTypes": false,
     "skipLibCheck": true,
     "isolatedModules": true,
     "noEmit": true,
-    "types": ["chrome"]
+    "types": ["chrome", "node"]
   },
-  "include": ["src", "vite.config.*.ts"]
+  "include": ["packages/*/src", "packages/*/vite.config*.ts"]
 }

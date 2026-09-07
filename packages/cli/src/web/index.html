@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claude Trees</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <aside id="sidebar">
+      <div class="brand">claude&#8203;-trees</div>
+      <input id="filter" type="search" placeholder="Filter…" autocomplete="off" />
+      <div id="list" class="list"></div>
+    </aside>
+
+    <main>
+      <header>
+        <div id="title" class="title">Pick a session</div>
+        <div id="stats" class="stats"></div>
+        <div class="spacer"></div>
+        <button id="compare" class="tool">Compare branches</button>
+        <button id="fit" class="tool">Fit</button>
+      </header>
+      <div id="canvas" class="canvas"><div id="tip" class="tip"></div></div>
+      <footer>
+        <div class="legend">
+          <span><i class="swatch" style="background:var(--human)"></i>you</span>
+          <span><i class="swatch" style="background:var(--assistant)"></i>Claude</span>
+          <span><i class="swatch" style="background:var(--accent)"></i>current path</span>
+          <span><i class="swatch bar"></i>wrote files / ran commands</span>
+        </div>
+        <div id="status" class="status"></div>
+      </footer>
+    </main>
+
+    <section id="panel" class="panel" hidden></section>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

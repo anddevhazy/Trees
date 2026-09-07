@@ -2,15 +2,19 @@
   "name": "claude-trees",
   "version": "0.1.0",
   "private": true,
-  "description": "Visualise the hidden branch tree of a claude.ai conversation.",
+  "description": "See the hidden branch trees behind claude.ai conversations and Claude Code sessions.",
   "type": "module",
+  "workspaces": ["packages/*"],
   "scripts": {
-    "build": "tsc --noEmit && vite build --config vite.config.content.ts && vite build --config vite.config.background.ts",
-    "dev": "npm run build -- --watch",
+    "build": "npm run typecheck && npm run build:extension && npm run build:cli",
+    "build:extension": "npm run build --workspace @claude-trees/extension",
+    "build:cli": "npm run build --workspace @claude-trees/cli",
+    "trees": "npm run build:cli --silent && node packages/cli/dist/cli.js",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.268",
+    "@types/node": "^22.5.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.0"
   }
