@@ -2,7 +2,8 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { loadDetail, readCwd, scanSession, type SessionScan } from './parse.js';
+import { loadDetail, readCwd, readOpeningKey, scanSession, type SessionScan } from './parse.js';
+import { mergeScans, type MergedTree } from './merge.js';
 import { PROJECTS_DIR, slugToDisplayPath } from './paths.js';
 import type { NodeDetail, ProjectSummary, SessionSummary } from './types.js';
 
@@ -14,7 +15,7 @@ const CACHE_FILE = path.join(CACHE_DIR, 'summaries.json');
  * mtime and size, which say nothing about how it was interpreted, so without
  * this a parser fix would keep serving summaries computed by the old one.
  */
-const SCHEMA = 2;
+const SCHEMA = 4;
 
 interface CacheEntry {
   mtimeMs: number;
@@ -166,13 +167,56 @@ export async function getSession(slug: string, sessionId: string): Promise<Sessi
   return scan;
 }
 
+/**
+ * Every transcript in a project that opens with the same prompt as this one.
+ * Forking a session copies the prefix into a new file, so these are branches of
+ * one conversation rather than separate ones.
+ */
+async function forkSiblings(slug: string, sessionId: string): Promise<string[]> {
+  const dir = path.join(PROJECTS_DIR, slug);
+  const files = (await fsp.readdir(dir).catch(() => [])).filter((name) => name.endsWith('.jsonl'));
+  const key = await readOpeningKey(sessionFile(slug, sessionId));
+  if (!key) return [sessionId];
+
+  const matches: Array<{ id: string; startedAt: number }> = [];
+  for (const file of files) {
+    const id = file.replace(/\.jsonl$/, '');
+    const full = path.join(dir, file);
+    if ((await readOpeningKey(full).catch(() => null)) !== key) continue;
+    const stat = await fsp.stat(full).catch(() => null);
+    matches.push({ id, startedAt: stat?.birthtimeMs ?? stat?.mtimeMs ?? 0 });
+  }
+  // Oldest first, so the original conversation forms the trunk.
+  matches.sort((a, b) => a.startedAt - b.startedAt);
+  return matches.length ? matches.map((match) => match.id) : [sessionId];
+}
+
+export interface SessionGroup {
+  id: string;
+  name: string;
+  tree: MergedTree;
+  summary: SessionSummary;
+}
+
+/** A session plus any forked copies of it, merged into one tree. */
+export async function getSessionGroup(slug: string, sessionId: string): Promise<SessionGroup> {
+  const ids = await forkSiblings(slug, sessionId);
+  const scans: SessionScan[] = [];
+  for (const id of ids) scans.push(await getSession(slug, id));
+
+  const focus = scans.find((scan) => scan.id === sessionId) ?? scans[0];
+  const tree = mergeScans(scans, sessionId);
+  return { id: sessionId, name: focus.title, tree, summary: focus.summary };
+}
+
 export async function getNodeDetail(
   slug: string,
   sessionId: string,
   nodeId: string,
 ): Promise<NodeDetail | null> {
-  const scan = await getSession(slug, sessionId);
-  const rawUuids = scan.rawByNode.get(nodeId);
-  if (!rawUuids) return null;
-  return loadDetail(sessionFile(slug, sessionId), nodeId, rawUuids);
+  // A node can belong to a forked sibling, so the group says which file to read.
+  const group = await getSessionGroup(slug, sessionId);
+  const origin = group.tree.origins.get(nodeId);
+  if (!origin) return null;
+  return loadDetail(sessionFile(slug, origin.sessionId), nodeId, origin.rawUuids);
 }

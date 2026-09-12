@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getNodeDetail, getSession, listProjects, listSessions } from './store.js';
+import { getNodeDetail, getSessionGroup, listProjects, listSessions } from './store.js';
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -37,13 +37,14 @@ async function handleApi(url: URL, res: http.ServerResponse): Promise<boolean> {
     return true;
   }
   if (parts[0] === 'sessions' && parts.length === 3) {
-    const scan = await getSession(decodeURIComponent(parts[1]), decodeURIComponent(parts[2]));
+    const group = await getSessionGroup(decodeURIComponent(parts[1]), decodeURIComponent(parts[2]));
     sendJson(res, 200, {
-      id: scan.id,
-      name: scan.title,
-      nodes: scan.nodes,
-      currentLeafId: scan.currentLeafId,
-      summary: scan.summary,
+      id: group.id,
+      name: group.name,
+      nodes: group.tree.nodes,
+      currentLeafId: group.tree.currentLeafId,
+      summary: group.summary,
+      mergedSessions: group.tree.sessionIds.length,
     });
     return true;
   }

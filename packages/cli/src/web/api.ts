@@ -27,6 +27,8 @@ export interface SessionPayload {
   nodes: TreeInput[];
   currentLeafId: string | null;
   summary: SessionSummary;
+  /** How many transcript files were grafted together (forks of one chat). */
+  mergedSessions: number;
 }
 
 export interface NodeDetail {

@@ -183,9 +183,9 @@ async function openSession(session: SessionSummary): Promise<void> {
     });
     state.tree = tree;
     titleEl.textContent = payload.name;
+    const merged = payload.mergedSessions > 1 ? ` · ${payload.mergedSessions} forked files merged` : '';
     statsEl.textContent =
-      `${tree.byId.size} turns · ${countForks(tree)} forks · ${countLeaves(tree)} endings · ` +
-      `${session.abandoned} unreachable`;
+      `${tree.byId.size} turns · ${countForks(tree)} forks · ${countLeaves(tree)} endings${merged}`;
     canvas.render(tree);
     setStatus('Click a turn to read it. Scroll to zoom, drag to pan.');
   } catch (error) {

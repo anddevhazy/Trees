@@ -76,6 +76,14 @@ function isPrompt(row: RawRow): boolean {
   return content.some((block) => block.type === 'text' && block.text?.trim());
 }
 
+/**
+ * A `user` row that is not something the person typed: tool output coming back,
+ * or context the harness injected. Both belong to the turn already in progress.
+ */
+function isMachinery(row: RawRow): boolean {
+  return row.type === 'user' && !isPrompt(row);
+}
+
 function toolTarget(input: Record<string, unknown> | undefined): string | undefined {
   if (!input) return undefined;
   for (const key of ['file_path', 'path', 'notebook_path', 'command', 'pattern', 'url', 'query']) {
@@ -111,6 +119,24 @@ export interface SessionScan {
   summary: SessionSummary;
   /** Display node id -> the raw transcript rows it was collapsed from. */
   rawByNode: Map<string, string[]>;
+}
+
+/**
+ * Identifies a conversation by its opening prompt. Forking a session on
+ * claude.ai copies the shared prefix into a new file with fresh uuids but the
+ * original timestamps, so this is what links the copies back together.
+ */
+export async function readOpeningKey(file: string): Promise<string | null> {
+  for await (const row of readRows(file)) {
+    if (!isPrompt(row)) continue;
+    return `${row.timestamp ?? ''}|${clip(textOf(row), 200)}`;
+  }
+  return null;
+}
+
+/** Matches the same turn across forked copies of one conversation. */
+export function turnSignature(node: TreeInput): string {
+  return `${node.sender}|${node.createdAt}|${node.text.slice(0, 120)}`;
 }
 
 /** Reads just far enough into a transcript to find the directory it ran in. */
@@ -298,25 +324,39 @@ function collapse(rows: RawRow[]): {
     const kids = childrenOf.get(frame.uuid) ?? [];
 
     const open = frame.openTurnId ? turns.get(frame.openTurnId) : undefined;
-    let turn: Turn;
-    let openForKids: string | null;
+    const isHuman = isPrompt(row);
 
-    if (isPrompt(row)) {
-      // A prompt always starts a new human turn, and the reply that follows
-      // always starts its own assistant turn.
-      turn = newTurn(row, 'human', frame.parentTurnId);
-      openForKids = null;
-    } else {
-      turn = open ?? newTurn(row, 'assistant', frame.parentTurnId);
-      // One child means the turn continues (more tool traffic, more output).
-      // Several children is a real fork, so each branch opens its own turn
-      // hanging off the turn where the split happened.
-      openForKids = kids.length === 1 ? turn.id : null;
+    // A prompt starts a new human turn; an assistant row continues the turn in
+    // progress or starts one. Machinery joins whatever is already open and
+    // never becomes a turn itself — an injected `user` row is not the person
+    // speaking, and it is certainly not Claude.
+    let turn: Turn | undefined;
+    if (isHuman) turn = newTurn(row, 'human', frame.parentTurnId);
+    else if (isMachinery(row)) turn = open;
+    else turn = open ?? newTurn(row, 'assistant', frame.parentTurnId);
+
+    if (turn) absorb(turn, row);
+
+    /*
+     * Machinery is never an alternative version of the conversation, so those
+     * children continue this turn however many there are. Claude answering with
+     * two tool calls leaves a row with a continuation child *and* its own
+     * result attached — counting that as a split drew forks nobody made.
+     */
+    const plumbing = kids.filter((kid) => isMachinery(byUuid.get(kid)!));
+    const branches = kids.filter((kid) => !isMachinery(byUuid.get(kid)!));
+
+    const parentForKids = turn ? turn.id : frame.parentTurnId;
+    const stillOpen = isHuman ? null : (turn ? turn.id : frame.openTurnId);
+    // One branch child means the turn simply continues. Several means a real
+    // fork, so each one opens its own turn under the turn that split.
+    const openForBranch = branches.length === 1 ? stillOpen : null;
+
+    for (const kid of plumbing) {
+      stack.push({ uuid: kid, parentTurnId: parentForKids, openTurnId: stillOpen });
     }
-    absorb(turn, row);
-
-    for (const kid of kids) {
-      stack.push({ uuid: kid, parentTurnId: turn.id, openTurnId: openForKids });
+    for (const kid of branches) {
+      stack.push({ uuid: kid, parentTurnId: parentForKids, openTurnId: openForBranch });
     }
   }
 
