@@ -2,7 +2,7 @@
 
 Conversations with Claude are trees, but you only ever see one path through them.
 Every time you edit a prompt on claude.ai, or rewind in Claude Code, the
-conversation forks — and the branch you left behind stays on record with no way
+conversation forks, and the branch you left behind stays on record with no way
 to look at it. This repo makes those trees visible.
 
 Two front ends, one renderer:
@@ -21,7 +21,7 @@ npm install
 npm run build
 ```
 
-**Chrome extension** — `chrome://extensions` → Developer mode → Load unpacked →
+**Chrome extension**: `chrome://extensions` → Developer mode → Load unpacked →
 `packages/extension/dist`. Open a conversation on claude.ai and press
 **Cmd/Ctrl+Shift+E**, or click the toolbar icon.
 
@@ -31,7 +31,7 @@ npm run build
 npm run trees          # or: node packages/cli/dist/cli.js
 ```
 
-It serves on `127.0.0.1:4173` (loopback only — your transcripts never leave the
+It serves on `127.0.0.1:4173` (loopback only, so your transcripts never leave the
 machine) and opens a browser. `--port <n>` and `--no-open` are available.
 
 ## Reading a tree
@@ -39,11 +39,11 @@ machine) and opens a browser. `--port <n>` and `--no-open` are available.
 - Depth runs left to right; every ending gets its own row.
 - Blue dots are your messages, sand dots are Claude's.
 - The orange path is the branch that is currently live; the ring marks its end.
-- A number beside a node is its child count — those are the fork points.
+- A number beside a node is its child count. Those are the fork points.
 - A bar under a node means that turn wrote files or ran commands (CLI only).
 - Hover for a preview, scroll to zoom, drag to pan, **Fit** to re-centre.
 
-In the CLI viewer, click any turn to read it in full — message text, files
+In the CLI viewer, click any turn to read it in full: message text, files
 written, commands run, and every tool call with its arguments and output.
 **Compare branches** then lets you pick two turns and see the two paths side by
 side from the point where they split.
@@ -52,7 +52,7 @@ side from the point where they split.
 
 ```
 packages/
-  core/        tree building, layout, and the SVG canvas — shared by both
+  core/        tree building, layout, and the SVG canvas, shared by both
   extension/   claude.ai content script, DOM branch-switching, overlay shell
   cli/         transcript parser, local server, and the browser viewer
 ```
@@ -72,7 +72,7 @@ where the displayed path diverges from the one you clicked, click that message's
 change, and repeat once per fork.
 
 **The fragile part.** [`dom.ts`](packages/extension/src/dom.ts) depends on
-claude.ai's private markup — the likeliest thing to break. Every selector sits at
+claude.ai's private markup, the likeliest thing to break. Every selector sits at
 the top of that file. If jumping stops working, open the console on claude.ai and
 run `__claudeTreesDebug()`: it logs what the selectors currently match and which
 elements have a pager. Failures name the step that failed rather than doing
@@ -81,7 +81,7 @@ nothing. Viewing only needs the API, so the tree still renders if the DOM drifts
 ## How the Claude Code side works
 
 Transcripts live at `~/.claude/projects/<slug>/<session>.jsonl`, one JSON object
-per line, each carrying `uuid` and `parentUuid` — the same parent-pointer shape
+per line, each carrying `uuid` and `parentUuid`, the same parent-pointer shape
 claude.ai uses. The forks are already there: one session in this author's history
 holds 34 of them.
 
@@ -108,7 +108,7 @@ size, with a schema version so a parser change invalidates them.
 An abandoned claude.ai branch is inert text, so switching back to it costs
 nothing. A Claude Code branch is not: turn 12 wrote a file, turn 15 ran a
 migration. Re-entering an old branch would leave the transcript and the
-filesystem disagreeing about what happened — which is why Claude Code entangles
+filesystem disagreeing about what happened, which is why Claude Code entangles
 rewind with checkpoints, and why parallel branches are git's job rather than the
 transcript's.
 
