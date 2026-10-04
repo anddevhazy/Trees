@@ -41,7 +41,19 @@ button.tool {
 button.tool:hover { border-color: var(--accent); color: var(--accent); }
 button.tool:disabled { opacity: .5; cursor: default; }
 
-.canvas { position: relative; flex: 1; overflow: hidden; background: var(--panel); }
+.main { display: flex; flex: 1; min-height: 0; }
+.canvas { position: relative; flex: 1; min-width: 0; overflow: hidden; background: var(--panel); }
+.panel {
+  width: 400px; border-left: 1px solid var(--line); background: var(--panel);
+  display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+}
+.panel[hidden] { display: none; }
+.panel-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.panel-head .who { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
+.panel-body {
+  overflow: auto; padding: 14px; min-height: 0; flex: 1;
+  font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere;
+}
 .tip {
   position: absolute; max-width: 340px; pointer-events: none; opacity: 0;
   transition: opacity .12s; padding: 9px 11px; border-radius: 9px;

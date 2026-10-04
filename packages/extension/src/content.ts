@@ -33,7 +33,7 @@ function getOverlay(): TreeOverlay {
   if (overlay) return overlay;
   overlay = new TreeOverlay({
     onRefresh: () => void refresh(true),
-    onSelect: (node) => void select(node.id),
+    onJump: (node) => void select(node.id),
   });
   return overlay;
 }
@@ -48,7 +48,7 @@ async function refresh(force: boolean): Promise<void> {
   ui.setStatus('Loading…');
   try {
     ui.render(await loadTree(force));
-    ui.setStatus('Click a node to jump to that branch. Scroll to zoom, drag to pan.');
+    ui.setStatus('Click a node to read it. Scroll to zoom, drag to pan.');
   } catch (error) {
     ui.setStatus(describe(error), true);
   }

@@ -5,7 +5,8 @@ import { OVERLAY_CSS } from './styles';
 
 export interface OverlayHandlers {
   onRefresh: () => void;
-  onSelect: (node: TreeNode) => void;
+  /** Switches claude.ai to the branch containing this node. */
+  onJump: (node: TreeNode) => void;
 }
 
 export class TreeOverlay {
@@ -17,6 +18,7 @@ export class TreeOverlay {
   private footer!: HTMLElement;
   private canvasEl!: HTMLElement;
   private tip!: HTMLElement;
+  private panel!: HTMLElement;
   private canvas: TreeCanvas;
 
   constructor(private handlers: OverlayHandlers) {
@@ -24,7 +26,7 @@ export class TreeOverlay {
     this.host.id = 'claude-trees-root';
     this.root = this.host.attachShadow({ mode: 'open' });
     this.canvas = new TreeCanvas({
-      onSelect: (node) => this.handlers.onSelect(node),
+      onSelect: (node) => this.showPanel(node),
       onHover: (node, screen) => this.showTip(node, screen),
     });
     this.build();
@@ -66,6 +68,14 @@ export class TreeOverlay {
     this.tip.className = 'tip';
     this.canvasEl.append(this.canvas.element, this.tip);
 
+    this.panel = document.createElement('aside');
+    this.panel.className = 'panel';
+    this.panel.hidden = true;
+
+    const main = document.createElement('div');
+    main.className = 'main';
+    main.append(this.canvasEl, this.panel);
+
     this.footer = document.createElement('footer');
     const legend = document.createElement('div');
     legend.className = 'legend';
@@ -76,7 +86,7 @@ export class TreeOverlay {
     this.statusEl = document.createElement('div');
     this.footer.append(legend, this.statusEl);
 
-    card.append(header, this.canvasEl, this.footer);
+    card.append(header, main, this.footer);
     backdrop.append(card);
     this.root.append(style, backdrop);
   }
@@ -111,7 +121,8 @@ export class TreeOverlay {
   private onKeyDown = (event: KeyboardEvent): void => {
     if (event.key === 'Escape') {
       event.stopPropagation();
-      this.close();
+      if (!this.panel.hidden) this.panel.hidden = true;
+      else this.close();
     }
   };
 
@@ -136,8 +147,7 @@ export class TreeOverlay {
     const snippet = node.text.length > 320 ? `${node.text.slice(0, 320)}…` : node.text;
     const who = document.createElement('div');
     who.className = 'who';
-    const version = node.siblingCount > 1 ? ` · version ${node.siblingIndex + 1}/${node.siblingCount}` : '';
-    who.textContent = `${node.sender === 'human' ? 'You' : 'Claude'} · depth ${node.depth + 1}${version}`;
+    who.textContent = heading(node);
     const body = document.createElement('div');
     body.textContent = snippet;
     this.tip.replaceChildren(who, body);
@@ -147,4 +157,34 @@ export class TreeOverlay {
     this.tip.style.top = `${Math.min(Math.max(8, screen.y - 20), rect.height - 120)}px`;
     this.tip.classList.add('on');
   }
+
+  private showPanel(node: TreeNode): void {
+    this.tip.classList.remove('on');
+
+    const head = document.createElement('div');
+    head.className = 'panel-head';
+    const who = document.createElement('div');
+    who.className = 'who';
+    who.textContent = heading(node);
+    const spacer = document.createElement('div');
+    spacer.className = 'spacer';
+    head.append(
+      who,
+      spacer,
+      this.button('Jump to branch', () => this.handlers.onJump(node)),
+      this.button('Close', () => (this.panel.hidden = true)),
+    );
+
+    const body = document.createElement('div');
+    body.className = 'panel-body';
+    body.textContent = node.text || '(no message text)';
+
+    this.panel.replaceChildren(head, body);
+    this.panel.hidden = false;
+  }
+}
+
+function heading(node: TreeNode): string {
+  const version = node.siblingCount > 1 ? ` · version ${node.siblingIndex + 1}/${node.siblingCount}` : '';
+  return `${node.sender === 'human' ? 'You' : 'Claude'} · depth ${node.depth + 1}${version}`;
 }
