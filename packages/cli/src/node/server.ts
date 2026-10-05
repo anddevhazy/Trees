@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getNodeDetail, getSessionGroup, listProjects, listSessions } from './store.js';
+import { getNodeDetail, getPromptTexts, getSessionGroup, listProjects, listSessions } from './store.js';
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -46,6 +46,14 @@ async function handleApi(url: URL, res: http.ServerResponse): Promise<boolean> {
       summary: group.summary,
       mergedSessions: group.tree.sessionIds.length,
     });
+    return true;
+  }
+  if (parts[0] === 'sessions' && parts[3] === 'prompts' && parts.length === 4) {
+    sendJson(
+      res,
+      200,
+      await getPromptTexts(decodeURIComponent(parts[1]), decodeURIComponent(parts[2])),
+    );
     return true;
   }
   if (parts[0] === 'sessions' && parts[3] === 'nodes' && parts.length === 5) {

@@ -59,6 +59,10 @@ export const api = {
     get<SessionSummary[]>(`/api/projects/${encodeURIComponent(slug)}/sessions`),
   session: (slug: string, id: string) =>
     get<SessionPayload>(`/api/sessions/${encodeURIComponent(slug)}/${encodeURIComponent(id)}`),
+  promptTexts: (slug: string, id: string) =>
+    get<Record<string, string>>(
+      `/api/sessions/${encodeURIComponent(slug)}/${encodeURIComponent(id)}/prompts`,
+    ),
   node: (slug: string, id: string, nodeId: string) =>
     get<NodeDetail>(
       `/api/sessions/${encodeURIComponent(slug)}/${encodeURIComponent(id)}/nodes/${encodeURIComponent(nodeId)}`,

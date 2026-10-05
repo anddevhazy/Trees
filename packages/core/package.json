@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./canvas": "./src/canvas.ts"
+    "./canvas": "./src/canvas.ts",
+    "./question-picker": "./src/question-picker.ts"
   }
 }

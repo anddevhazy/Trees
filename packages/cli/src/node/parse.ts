@@ -486,6 +486,15 @@ export async function loadDetail(
   };
 }
 
+/** Full, unclipped text for a set of raw rows, in one pass over the transcript. */
+export async function loadTexts(file: string, rawUuids: Set<string>): Promise<Map<string, string>> {
+  const texts = new Map<string, string>();
+  for await (const row of readRows(file)) {
+    if (row.uuid && rawUuids.has(row.uuid)) texts.set(row.uuid, textOf(row));
+  }
+  return texts;
+}
+
 function stringify(value: unknown): string {
   if (value == null) return '';
   if (typeof value === 'string') return value;

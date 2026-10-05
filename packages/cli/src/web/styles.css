@@ -52,6 +52,7 @@ header { display: flex; align-items: center; gap: 14px; padding: 12px 16px; bord
 .spacer { flex: 1; }
 .tool { font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 7px; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
 .tool:hover { border-color: var(--accent); color: var(--accent); }
+.tool:disabled { opacity: .5; cursor: default; border-color: var(--line); color: var(--ink); }
 .tool.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .canvas { position: relative; flex: 1; overflow: hidden; background: var(--panel); }
 footer { display: flex; gap: 14px; align-items: center; padding: 8px 16px; border-top: 1px solid var(--line); min-height: 36px; }

@@ -1,11 +1,12 @@
 import './styles.css';
-import { buildTree, commonAncestor, countForks, countLeaves } from '@claude-trees/core';
+import { buildTree, commonAncestor, countForks, countLeaves, listPrompts } from '@claude-trees/core';
 import type { ConversationTree, TreeNode } from '@claude-trees/core';
 import { CANVAS_CSS, TreeCanvas } from '@claude-trees/core/canvas';
+import { PICKER_CSS, QuestionPicker } from '@claude-trees/core/question-picker';
 import { api, type NodeDetail, type ProjectSummary, type SessionSummary } from './api';
 
 const style = document.createElement('style');
-style.textContent = CANVAS_CSS;
+style.textContent = `${CANVAS_CSS}\n${PICKER_CSS}`;
 document.head.append(style);
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -330,6 +331,32 @@ async function showDetail(node: TreeNode): Promise<void> {
     body.append(section);
   }
   setStatus(`Turn ${node.depth + 1} of this branch.`);
+}
+
+el('questions').addEventListener('click', () => void showQuestions());
+
+async function showQuestions(): Promise<void> {
+  const tree = state.tree;
+  if (!tree || !state.session) {
+    setStatus('Open a session first.');
+    return;
+  }
+  setComparing(false);
+  const body = panelShell('Questions you asked', false);
+  body.textContent = 'Loading prompts…';
+  let texts: Record<string, string>;
+  try {
+    texts = await api.promptTexts(state.openProject!.slug, state.session.id);
+  } catch (error) {
+    body.textContent = error instanceof Error ? error.message : String(error);
+    return;
+  }
+  // The session may have changed while the texts were loading.
+  if (state.tree !== tree) return;
+
+  const prompts = listPrompts(tree, new Map(Object.entries(texts)));
+  body.replaceChildren(new QuestionPicker(tree.id, tree.name, prompts).element);
+  setStatus(`${prompts.length} prompts across all branches. Tick the real questions, then export.`);
 }
 
 function renderDiff(): void {

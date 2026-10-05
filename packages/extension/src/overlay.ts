@@ -1,6 +1,7 @@
-import { countForks, countLeaves } from '@claude-trees/core';
+import { countForks, countLeaves, listPrompts } from '@claude-trees/core';
 import type { ConversationTree, TreeNode } from '@claude-trees/core';
 import { CANVAS_CSS, TreeCanvas } from '@claude-trees/core/canvas';
+import { PICKER_CSS, QuestionPicker } from '@claude-trees/core/question-picker';
 import { OVERLAY_CSS } from './styles';
 
 export interface OverlayHandlers {
@@ -20,6 +21,7 @@ export class TreeOverlay {
   private tip!: HTMLElement;
   private panel!: HTMLElement;
   private canvas: TreeCanvas;
+  private tree: ConversationTree | null = null;
 
   constructor(private handlers: OverlayHandlers) {
     this.host = document.createElement('div');
@@ -34,7 +36,7 @@ export class TreeOverlay {
 
   private build(): void {
     const style = document.createElement('style');
-    style.textContent = `${OVERLAY_CSS}\n${CANVAS_CSS}`;
+    style.textContent = `${OVERLAY_CSS}\n${CANVAS_CSS}\n${PICKER_CSS}`;
 
     const backdrop = document.createElement('div');
     backdrop.className = 'backdrop';
@@ -57,6 +59,7 @@ export class TreeOverlay {
       this.titleEl,
       this.statsEl,
       spacer,
+      this.button('Questions', () => this.showQuestions()),
       this.button('Fit', () => this.canvas.fit()),
       this.button('Refresh', () => this.handlers.onRefresh()),
       this.button('Close', () => this.close()),
@@ -132,6 +135,7 @@ export class TreeOverlay {
   }
 
   render(tree: ConversationTree): void {
+    this.tree = tree;
     this.titleEl.textContent = tree.name;
     this.statsEl.textContent =
       `${tree.byId.size} messages · ${countForks(tree)} forks · ${countLeaves(tree)} endings · ` +
@@ -181,6 +185,34 @@ export class TreeOverlay {
 
     this.panel.replaceChildren(head, body);
     this.panel.hidden = false;
+  }
+
+  /** claude.ai returns every message in full, so the tree already holds the whole prompt. */
+  private showQuestions(): void {
+    const tree = this.tree;
+    if (!tree) {
+      this.setStatus('The tree has not loaded yet.');
+      return;
+    }
+    this.tip.classList.remove('on');
+
+    const head = document.createElement('div');
+    head.className = 'panel-head';
+    const who = document.createElement('div');
+    who.className = 'who';
+    who.textContent = 'Questions you asked';
+    const spacer = document.createElement('div');
+    spacer.className = 'spacer';
+    head.append(who, spacer, this.button('Close', () => (this.panel.hidden = true)));
+
+    const prompts = listPrompts(tree);
+    const body = document.createElement('div');
+    body.className = 'panel-body questions';
+    body.append(new QuestionPicker(tree.id, tree.name, prompts).element);
+
+    this.panel.replaceChildren(head, body);
+    this.panel.hidden = false;
+    this.setStatus(`${prompts.length} prompts across all branches. Tick the real questions, then export.`);
   }
 }
 

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { loadDetail, readCwd, readOpeningKey, scanSession, type SessionScan } from './parse.js';
+import { loadDetail, loadTexts, readCwd, readOpeningKey, scanSession, type SessionScan } from './parse.js';
 import { mergeScans, type MergedTree } from './merge.js';
 import { PROJECTS_DIR, slugToDisplayPath } from './paths.js';
 import type { NodeDetail, ProjectSummary, SessionSummary } from './types.js';
@@ -207,6 +207,36 @@ export async function getSessionGroup(slug: string, sessionId: string): Promise<
   const focus = scans.find((scan) => scan.id === sessionId) ?? scans[0];
   const tree = mergeScans(scans, sessionId);
   return { id: sessionId, name: focus.title, tree, summary: focus.summary };
+}
+
+/**
+ * Full text of every prompt in the group, keyed by node id. The tree payload
+ * only carries previews, and the question export needs the whole prompt.
+ */
+export async function getPromptTexts(slug: string, sessionId: string): Promise<Record<string, string>> {
+  const group = await getSessionGroup(slug, sessionId);
+
+  // Batch by file, so each transcript is read once however many prompts it holds.
+  const byFile = new Map<string, Array<{ nodeId: string; rawUuids: string[] }>>();
+  for (const node of group.tree.nodes) {
+    if (node.sender !== 'human') continue;
+    const origin = group.tree.origins.get(node.id);
+    if (!origin) continue;
+    const list = byFile.get(origin.sessionId) ?? [];
+    list.push({ nodeId: node.id, rawUuids: origin.rawUuids });
+    byFile.set(origin.sessionId, list);
+  }
+
+  const texts: Record<string, string> = {};
+  for (const [fileSessionId, prompts] of byFile) {
+    const wanted = new Set(prompts.flatMap((prompt) => prompt.rawUuids));
+    const raw = await loadTexts(sessionFile(slug, fileSessionId), wanted);
+    for (const { nodeId, rawUuids } of prompts) {
+      const text = rawUuids.map((uuid) => raw.get(uuid) ?? '').filter(Boolean).join('\n\n');
+      if (text) texts[nodeId] = text;
+    }
+  }
+  return texts;
 }
 
 export async function getNodeDetail(
