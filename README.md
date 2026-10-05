@@ -5,6 +5,12 @@ Every time you edit a prompt on claude.ai, or rewind in Claude Code, the
 conversation forks, and the branch you left behind stays on record with no way
 to look at it. This repo makes those trees visible.
 
+**Who it's for.** At the point of building this, it's primarily for people learning a concept by branching: asking, rewinding, and
+asking again. They already go back to compare answers on other branches, by
+clicking through `< 2/3 >` arrows one fork at a time or digging through
+transcripts. Claude Trees puts every branch in one view, so any response is a
+click away.
+
 Two front ends, one renderer:
 
 | | Source | What you can do |
