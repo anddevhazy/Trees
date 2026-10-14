@@ -126,7 +126,7 @@ export interface SessionScan {
  * claude.ai copies the shared prefix into a new file with fresh uuids but the
  * original timestamps, so this is what links the copies back together.
  */
-export async function readOpeningKey(file: string): Promise<string | null> {
+export async function computeOpeningKey(file: string): Promise<string | null> {
   for await (const row of readRows(file)) {
     if (!isPrompt(row)) continue;
     return `${row.timestamp ?? ''}|${clip(textOf(row), 200)}`;

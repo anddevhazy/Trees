@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { loadDetail, loadTexts, readCwd, readOpeningKey, scanSession, type SessionScan } from './parse.js';
+import { loadDetail, loadTexts, readCwd, computeOpeningKey, scanSession, type SessionScan } from './parse.js';
 import { mergeScans, type MergedTree } from './merge.js';
 import { PROJECTS_DIR, slugToDisplayPath } from './paths.js';
 import type { NodeDetail, ProjectSummary, SessionSummary } from './types.js';
@@ -175,14 +175,14 @@ export async function getSession(slug: string, sessionId: string): Promise<Sessi
 async function forkSiblings(slug: string, sessionId: string): Promise<string[]> {
   const dir = path.join(PROJECTS_DIR, slug);
   const files = (await fsp.readdir(dir).catch(() => [])).filter((name) => name.endsWith('.jsonl'));
-  const key = await readOpeningKey(sessionFile(slug, sessionId));
+  const key = await computeOpeningKey(sessionFile(slug, sessionId));
   if (!key) return [sessionId];
 
   const matches: Array<{ id: string; startedAt: number }> = [];
   for (const file of files) {
     const id = file.replace(/\.jsonl$/, '');
     const full = path.join(dir, file);
-    if ((await readOpeningKey(full).catch(() => null)) !== key) continue;
+    if ((await computeOpeningKey(full).catch(() => null)) !== key) continue;
     const stat = await fsp.stat(full).catch(() => null);
     matches.push({ id, startedAt: stat?.birthtimeMs ?? stat?.mtimeMs ?? 0 });
   }
