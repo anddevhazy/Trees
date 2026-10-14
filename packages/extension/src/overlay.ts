@@ -1,7 +1,7 @@
 import { countForks, countLeaves, listPrompts } from '@claude-trees/core';
 import type { ConversationTree, TreeNode } from '@claude-trees/core';
-import { CANVAS_CSS, TreeCanvas } from '@claude-trees/core/canvas';
-import { icon, logo, type IconName } from '@claude-trees/core/icons';
+import { CANVAS_CSS, placeTip, TreeCanvas } from '@claude-trees/core/canvas';
+import { icon, logo, skeleton, type IconName } from '@claude-trees/core/icons';
 import { MARKDOWN_CSS, renderMarkdown } from '@claude-trees/core/markdown';
 import { PICKER_CSS, QuestionPicker } from '@claude-trees/core/question-picker';
 import { pageIsDark } from './dom';
@@ -86,7 +86,7 @@ export class TreeOverlay {
     this.emptyEl = document.createElement('div');
     this.emptyEl.className = 'empty-state';
     this.emptyText = document.createElement('div');
-    this.emptyEl.append(logo(40), this.emptyText);
+    this.emptyEl.append(logo(40), skeleton(), this.emptyText);
     this.canvasEl.append(this.canvas.element, this.emptyEl, this.tip);
 
     this.panel = document.createElement('aside');
@@ -175,6 +175,8 @@ export class TreeOverlay {
     // Until a tree is drawn, the canvas is blank, so the message goes there too.
     this.emptyText.textContent = message;
     this.emptyEl.classList.toggle('error', isError);
+    // Before the first tree, any message that is not an error means a fetch is in flight.
+    this.emptyEl.classList.toggle('loading', !isError && !this.tree);
     if (isError) this.syncJump();
   }
 
@@ -188,7 +190,6 @@ export class TreeOverlay {
       stat(tree.byId.size, 'messages'),
       stat(countForks(tree), 'forks'),
       stat(countLeaves(tree), 'endings'),
-      stat(tree.currentPath.length, 'on current path'),
     );
     this.canvas.render(tree);
     this.syncJump();
@@ -222,10 +223,7 @@ export class TreeOverlay {
     body.textContent = snippet;
     this.tip.replaceChildren(who, body);
 
-    const rect = this.canvasEl.getBoundingClientRect();
-    this.tip.style.left = `${Math.min(Math.max(8, screen.x + 18), rect.width - 356)}px`;
-    this.tip.style.top = `${Math.min(Math.max(8, screen.y - 20), rect.height - 120)}px`;
-    this.tip.classList.add('on');
+    placeTip(this.tip, this.canvasEl, screen);
   }
 
   private showPanel(node: TreeNode): void {

@@ -1,8 +1,8 @@
 import './styles.css';
 import { buildTree, commonAncestor, countForks, countLeaves, listPrompts } from '@claude-trees/core';
 import type { ConversationTree, TreeNode } from '@claude-trees/core';
-import { CANVAS_CSS, TreeCanvas } from '@claude-trees/core/canvas';
-import { icon, logo } from '@claude-trees/core/icons';
+import { CANVAS_CSS, placeTip, TreeCanvas } from '@claude-trees/core/canvas';
+import { icon, logo, skeleton } from '@claude-trees/core/icons';
 import { MARKDOWN_CSS, renderMarkdown } from '@claude-trees/core/markdown';
 import { PICKER_CSS, QuestionPicker } from '@claude-trees/core/question-picker';
 import { api, type NodeDetail, type ProjectSummary, type SessionSummary } from './api';
@@ -192,7 +192,10 @@ async function openSession(session: SessionSummary): Promise<void> {
   closePanel();
   renderSidebar();
   setStatus('Loading session…');
-  if (!state.tree) emptyTextEl.textContent = 'Loading session…';
+  if (!state.tree) {
+    emptyTextEl.textContent = 'Loading session…';
+    emptyEl.classList.add('loading');
+  }
   try {
     const payload = await api.session(state.openProject!.slug, session.id);
     const tree = buildTree({
@@ -214,6 +217,7 @@ async function openSession(session: SessionSummary): Promise<void> {
     setStatus('Click a turn to read it. Scroll to zoom, drag to pan.');
   } catch (error) {
     fail(error);
+    emptyEl.classList.remove('loading');
     if (!state.tree) emptyTextEl.textContent = 'That session could not be loaded.';
   }
 }
@@ -471,19 +475,15 @@ function showTip(node: TreeNode | null, screen: { x: number; y: number }): void 
     `${node.sender === 'human' ? 'You' : 'Claude'} · turn ${node.depth + 1}${version}` +
     (touched ? ` · touched ${touched}` : '');
   const body = document.createElement('div');
-  body.textContent = node.text;
+  body.textContent = node.text.length > 320 ? `${node.text.slice(0, 320)}…` : node.text;
   tipEl.replaceChildren(who, body);
-
-  const rect = canvasEl.getBoundingClientRect();
-  tipEl.style.left = `${Math.min(Math.max(8, screen.x + 18), rect.width - 376)}px`;
-  tipEl.style.top = `${Math.min(Math.max(8, screen.y - 20), rect.height - 130)}px`;
-  tipEl.classList.add('on');
+  placeTip(tipEl, canvasEl, screen);
 }
 
 /* Boot --------------------------------------------------------------------- */
 
 el('brand').prepend(logo());
-emptyEl.prepend(logo(40));
+emptyEl.prepend(logo(40), skeleton());
 el('questions').prepend(icon('questions'));
 compareBtn.prepend(icon('compare'));
 el('fit').prepend(icon('fit'));

@@ -7,17 +7,17 @@ export const OVERLAY_CSS = `
   background: rgba(20, 18, 16, 0.55);
   backdrop-filter: blur(3px);
   display: flex; align-items: center; justify-content: center;
-  padding: 32px;
+  padding: 24px;
   animation: fade-in .18s ease-out;
 }
 .backdrop.closing { animation: fade-out .14s ease-in forwards; }
 
 .card {
   --bg: #faf9f5; --panel: #ffffff; --ink: #1f1e1c; --muted: #6f6a62;
-  --line: #e3ded3; --accent: #d97757; --human: #6b8f9c; --assistant: #b8a68a;
+  --line: #e3ded3; --edge: #cbc3b4; --accent: #d97757; --human: #6b8f9c; --assistant: #b8a68a;
   --diff-left: #3f7f6f; --diff-right: #9a6fb0;
   display: flex; flex-direction: column;
-  width: min(1100px, 100%); height: min(760px, 100%);
+  width: min(1440px, 100%); height: min(920px, 100%);
   background: var(--bg); color: var(--ink);
   border: 1px solid var(--line); border-radius: 14px;
   box-shadow: 0 24px 64px rgba(0,0,0,.32);
@@ -28,7 +28,7 @@ export const OVERLAY_CSS = `
 /* Set from claude.ai's own theme, which need not match the OS. */
 .card[data-theme="dark"] {
   --bg: #1f1e1c; --panel: #262523; --ink: #f2efe7; --muted: #9a938a;
-  --line: #38352f; --accent: #d97757; --human: #7fa8b6; --assistant: #c4b294;
+  --line: #38352f; --edge: #504b44; --accent: #d97757; --human: #7fa8b6; --assistant: #c4b294;
   --diff-left: #5fae98; --diff-right: #b894cd;
 }
 
@@ -64,6 +64,8 @@ button.tool.icon-only:hover { background: var(--panel); border-color: var(--line
 .empty-state[hidden] { display: none; }
 .empty-state.error { color: var(--accent); }
 .empty-state .logo { opacity: .9; }
+.empty-state .trees-skeleton, .empty-state.loading .logo { display: none; }
+.empty-state.loading .trees-skeleton { display: block; }
 
 .panel {
   width: 400px; border-left: 1px solid var(--line); background: var(--panel);
@@ -83,7 +85,7 @@ button.tool.icon-only:hover { background: var(--panel); border-color: var(--line
   padding: 9px 11px; border-radius: 9px;
   background: var(--bg); border: 1px solid var(--line); color: var(--ink);
   font-size: 12px; line-height: 1.45; box-shadow: 0 8px 24px rgba(0,0,0,.22);
-  white-space: pre-wrap; z-index: 2;
+  white-space: pre-wrap; z-index: 2; max-height: 60%; overflow: hidden;
 }
 .tip.on { opacity: 1; transform: none; }
 .tip .who { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 4px; }

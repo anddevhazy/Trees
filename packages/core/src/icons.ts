@@ -42,3 +42,25 @@ export function logo(size = 18): SVGSVGElement {
   );
   return svg;
 }
+
+/** A faint branching shape that pulses from the root outwards while a tree loads. */
+export function skeleton(): SVGSVGElement {
+  const svg = svgEl('svg', { class: 'trees-skeleton', viewBox: '0 0 140 64', width: 140, height: 64, 'aria-hidden': 'true' });
+  const dots: Array<[number, number]> = [[10, 32], [46, 32], [82, 16], [82, 48], [118, 16], [118, 40], [118, 58]];
+  const links: Array<[number, number, number]> = [[0, 1, 0], [1, 2, 1], [1, 3, 1], [2, 4, 2], [3, 5, 2], [3, 6, 2]];
+  for (const [from, to, depth] of links) {
+    const [x1, y1] = dots[from];
+    const [x2, y2] = dots[to];
+    const mid = (x1 + x2) / 2;
+    const path = svgEl('path', { d: `M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}` });
+    path.style.setProperty('--i', `${depth * 160}ms`);
+    svg.append(path);
+  }
+  dots.forEach(([cx, cy], index) => {
+    const depth = index === 0 ? 0 : index === 1 ? 1 : index < 4 ? 2 : 3;
+    const dot = svgEl('circle', { cx, cy, r: 5 });
+    dot.style.setProperty('--i', `${depth * 160}ms`);
+    svg.append(dot);
+  });
+  return svg;
+}

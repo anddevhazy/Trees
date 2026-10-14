@@ -16,7 +16,7 @@ export function svgEl<K extends keyof SVGElementTagNameMap>(
 export { CANVAS_CSS };
 
 export interface CanvasHandlers {
-  onSelect?: (node: TreeNode, event: MouseEvent) => void;
+  onSelect?: (node: TreeNode, event: MouseEvent | KeyboardEvent) => void;
   onHover?: (node: TreeNode | null, screen: { x: number; y: number }) => void;
 }
 
@@ -36,9 +36,10 @@ interface NodeEls {
 }
 
 const LABEL_CHARS = 40;
-const LABEL_OFFSET = 18;
-/** Rough advance of an 11px sans glyph, for reserving room without measuring. */
-const LABEL_CHAR_WIDTH = 6.2;
+const LABEL_OFFSET = 19;
+/** Rough advance of a 12.5px sans glyph, for reserving room without measuring. */
+const LABEL_CHAR_WIDTH = 7;
+const FORK_RADIUS = 10;
 /** Below this zoom, labels and the grid are noise. */
 const FAR_SCALE = 0.45;
 const GRID = 22;
@@ -86,6 +87,9 @@ export class TreeCanvas {
   private markerLayer = svgEl('g');
   private nodeLayer = svgEl('g');
   private marker: SVGGElement | null = null;
+  private focusRing = svgEl('circle', { class: 'focus-ring' });
+  /** The node the keyboard is on; null until an arrow key (or a tab in) picks one. */
+  private focusedId: string | null = null;
   private nodeEls = new Map<string, NodeEls>();
   /** Keyed by the child's id. */
   private edgeEls = new Map<string, SVGPathElement>();
@@ -107,10 +111,17 @@ export class TreeCanvas {
   constructor(private handlers: CanvasHandlers = {}) {
     this.element = svgEl('svg');
     this.element.classList.add('trees-svg');
+    this.element.setAttribute('tabindex', '0');
+    this.element.setAttribute('role', 'application');
+    this.element.setAttribute(
+      'aria-label',
+      'Conversation tree. Arrow keys move between turns, Enter opens one.',
+    );
     this.viewport = svgEl('g');
     this.viewport.append(this.edgeLayer, this.markerLayer, this.nodeLayer);
     this.element.append(this.viewport);
     this.installPanZoom();
+    this.installKeyboard();
     // Covers a host panel opening beside the canvas, and a first render before attach.
     new ResizeObserver(() => {
       if (this.fitted) this.fit();
@@ -165,7 +176,7 @@ export class TreeCanvas {
       svgEl('circle', { class: 'leaf-pulse', r: 12.5 }),
       svgEl('circle', { class: 'leaf-ring', r: 12.5 }),
     );
-    this.markerLayer.replaceChildren(this.marker);
+    this.markerLayer.replaceChildren(this.marker, this.focusRing);
   }
 
   /** Returns the new leaf's id when the current path moved, so the caller can follow it. */
@@ -201,7 +212,9 @@ export class TreeCanvas {
     const delays = this.pathDelays(tree);
     let maxDepth = 1;
     if (fresh) for (const node of tree.byId.values()) maxDepth = Math.max(maxDepth, node.depth);
-    const introStep = Math.min(28, 500 / maxDepth);
+    // On first draw the tree grows outwards: each edge draws in over one step,
+    // and the turn at its end pops in as the line arrives.
+    const introStep = Math.min(70, 1100 / maxDepth);
 
     let right = tree.width;
     for (const node of tree.byId.values()) {
@@ -211,7 +224,8 @@ export class TreeCanvas {
         let edge = this.edgeEls.get(node.id);
         if (!edge) {
           edge = svgEl('path', { class: 'edge' });
-          if (fresh) edge.style.setProperty('--i', `${node.depth * introStep}ms`);
+          edge.setAttribute('pathLength', '1');
+          if (fresh) edge.style.setProperty('--i', `${(node.depth - 1) * introStep}ms`);
           this.edgeLayer.append(edge);
           this.edgeEls.set(node.id, edge);
         }
@@ -245,12 +259,18 @@ export class TreeCanvas {
       this.marker.style.display = leaf ? '' : 'none';
       if (leaf) this.marker.style.transform = `translate(${leaf.x}px, ${leaf.y}px)`;
       this.marker.classList.toggle('dim', comparing && !!leaf && !emphasised.has(leaf.id));
+      if (fresh && leaf) this.marker.style.setProperty('--i', `${leaf.depth * introStep}ms`);
     }
+    this.placeFocusRing();
 
     if (fresh && !reducedMotion()) {
+      this.element.style.setProperty('--step', `${introStep}ms`);
       this.element.classList.add('intro');
       clearTimeout(this.introTimer);
-      this.introTimer = window.setTimeout(() => this.element.classList.remove('intro'), 1000);
+      this.introTimer = window.setTimeout(
+        () => this.element.classList.remove('intro'),
+        maxDepth * introStep + 700,
+      );
     }
 
     if (!delays.size) return null;
@@ -350,7 +370,7 @@ export class TreeCanvas {
     const { group, dot, under, over } = els;
 
     const fork = node.children.length > 1;
-    const radius = fork ? 9 : node.onCurrentPath ? 7 : 5.5;
+    const radius = fork ? FORK_RADIUS : node.onCurrentPath ? 7 : 5.5;
     group.setAttribute('transform', `translate(${node.x} ${node.y})`);
     group.classList.toggle('on', node.onCurrentPath);
     group.classList.toggle('off', !node.onCurrentPath);
@@ -433,11 +453,12 @@ export class TreeCanvas {
     this.element.style.backgroundPosition = `${x}px ${y}px`;
   }
 
-  private moveTo(target: View, animate: boolean): void {
+  private moveTo(target: View, animate: boolean, done?: () => void): void {
     cancelAnimationFrame(this.raf);
     if (!animate || reducedMotion()) {
       this.view = target;
       this.applyView();
+      done?.();
       return;
     }
     const from = { ...this.view };
@@ -454,6 +475,7 @@ export class TreeCanvas {
       };
       this.applyView();
       if (t < 1) this.raf = requestAnimationFrame(tick);
+      else done?.();
     };
     this.raf = requestAnimationFrame(tick);
   }
@@ -478,7 +500,7 @@ export class TreeCanvas {
   }
 
   /** Pans so a node sits in the middle, without changing zoom. */
-  centreOn(id: string): void {
+  centreOn(id: string, done?: () => void): void {
     const node = this.tree?.byId.get(id);
     if (!node) return;
     const rect = this.element.getBoundingClientRect();
@@ -490,17 +512,97 @@ export class TreeCanvas {
         y: rect.height / 2 - node.y * this.view.scale,
       },
       true,
+      done,
     );
   }
 
   /** Like centreOn, but leaves the view alone when the node is already comfortably visible. */
-  reveal(id: string): void {
+  reveal(id: string, done?: () => void): void {
     const node = this.tree?.byId.get(id);
     if (!node) return;
     const rect = this.element.getBoundingClientRect();
     const { x, y } = this.toScreen(node);
     const inset = 40;
-    if (x < inset || y < inset || x > rect.width - inset || y > rect.height - inset) this.centreOn(id);
+    if (x < inset || y < inset || x > rect.width - inset || y > rect.height - inset) this.centreOn(id, done);
+    else done?.();
+  }
+
+  private placeFocusRing(): void {
+    const node = this.focusedId ? this.tree?.byId.get(this.focusedId) : undefined;
+    if (!node) this.focusedId = null;
+    this.focusRing.style.display = node ? '' : 'none';
+    if (!node) return;
+    const radius = node.children.length > 1 ? FORK_RADIUS : node.onCurrentPath ? 7 : 5.5;
+    this.focusRing.setAttribute('r', String(radius + 6));
+    this.focusRing.setAttribute('transform', `translate(${node.x} ${node.y})`);
+  }
+
+  private focusNode(node: TreeNode): void {
+    this.focusedId = node.id;
+    this.placeFocusRing();
+    this.highlight(node);
+    this.handlers.onHover?.(null, { x: 0, y: 0 });
+    // The preview is placed once the view has settled, or it would point at where the node was.
+    this.reveal(node.id, () => {
+      if (this.focusedId === node.id) this.handlers.onHover?.(node, this.toScreen(node));
+    });
+  }
+
+  /** Left/right walk along a branch, up/down step to the nearest turn at the same depth. */
+  private neighbour(node: TreeNode, key: string): TreeNode | undefined {
+    const tree = this.tree!;
+    if (key === 'ArrowLeft') return node.parentId ? tree.byId.get(node.parentId) : undefined;
+    if (key === 'ArrowRight') {
+      return node.children.find((child) => child.onCurrentPath) ?? node.children[0];
+    }
+    const down = key === 'ArrowDown';
+    let best: TreeNode | undefined;
+    for (const other of tree.byId.values()) {
+      if (other.depth !== node.depth || other === node) continue;
+      if (down ? other.y <= node.y : other.y >= node.y) continue;
+      if (!best || Math.abs(other.y - node.y) < Math.abs(best.y - node.y)) best = other;
+    }
+    return best;
+  }
+
+  private installKeyboard(): void {
+    const start = (): TreeNode | undefined => {
+      const tree = this.tree;
+      if (!tree) return undefined;
+      return (
+        (this.selectedId ? tree.byId.get(this.selectedId) : undefined) ??
+        tree.currentPath[tree.currentPath.length - 1]
+      );
+    };
+
+    // Tabbing in lands on a node straight away; a click that focuses the canvas does not.
+    this.element.addEventListener('focus', () => {
+      if (this.focusedId || !this.element.matches(':focus-visible')) return;
+      const node = start();
+      if (node) this.focusNode(node);
+    });
+    this.element.addEventListener('blur', () => {
+      this.focusedId = null;
+      this.placeFocusRing();
+      this.highlight(null);
+      this.handlers.onHover?.(null, { x: 0, y: 0 });
+    });
+
+    this.element.addEventListener('keydown', (event) => {
+      const tree = this.tree;
+      if (!tree || event.metaKey || event.ctrlKey || event.altKey) return;
+      const current = this.focusedId ? tree.byId.get(this.focusedId) : undefined;
+      if (event.key.startsWith('Arrow')) {
+        event.preventDefault();
+        event.stopPropagation();
+        const next = current ? this.neighbour(current, event.key) : start();
+        if (next) this.focusNode(next);
+      } else if ((event.key === 'Enter' || event.key === ' ') && current) {
+        event.preventDefault();
+        event.stopPropagation();
+        this.handlers.onSelect?.(current, event);
+      }
+    });
   }
 
   private installPanZoom(): void {
@@ -553,6 +655,21 @@ export class TreeCanvas {
       { passive: false },
     );
   }
+}
+
+/** Beside the node, flipping to its left near the right edge and kept inside the canvas. */
+export function placeTip(tip: HTMLElement, canvas: HTMLElement, screen: { x: number; y: number }): void {
+  // Measured at the far left, so the right edge doesn't squeeze its width.
+  tip.style.left = '0px';
+  tip.style.top = '0px';
+  const { width, height } = canvas.getBoundingClientRect();
+  const w = tip.offsetWidth;
+  const h = tip.offsetHeight;
+  let left = screen.x + 18;
+  if (left + w > width - 8) left = screen.x - 18 - w;
+  tip.style.left = `${Math.max(8, Math.min(left, width - w - 8))}px`;
+  tip.style.top = `${Math.max(8, Math.min(screen.y - 20, height - h - 8))}px`;
+  tip.classList.add('on');
 }
 
 function setDelay(el: SVGElement, ms: number | undefined): void {
