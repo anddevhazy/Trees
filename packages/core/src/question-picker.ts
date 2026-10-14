@@ -1,4 +1,4 @@
-import { previewOf, promptsToMarkdown, questionsFileName, type Prompt } from './questions.js';
+import { promptsToMarkdown, questionsFileName, type Prompt } from './questions.js';
 
 /** Styles for the picker. Hosts supply the colour tokens, as for the canvas. */
 export const PICKER_CSS = `
@@ -9,9 +9,16 @@ export const PICKER_CSS = `
 .qp-item.on { border-color: var(--accent); }
 .qp-item input { margin-top: 3px; accent-color: var(--accent); cursor: pointer; flex: none; }
 .qp-main { min-width: 0; flex: 1; }
-.qp-meta { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 3px; }
-.qp-text { font-size: 13px; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
-.qp-more { font: inherit; font-size: 12px; background: none; border: 0; padding: 0; margin-top: 4px; color: var(--accent); cursor: pointer; }
+.qp-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 3px; }
+.qp-meta { flex: 1; min-width: 0; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Collapsed, every card is the same couple of lines whatever the prompt's length or line breaks. */
+.qp-text {
+  font-size: 13px; line-height: 1.5; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
+.qp-text.open { display: block; white-space: pre-wrap; }
+.qp-more { flex: none; font: inherit; font-size: 11px; background: none; border: 0; padding: 0; color: var(--accent); cursor: pointer; }
+.qp-more[hidden] { display: none; }
 .qp-empty { color: var(--muted); padding: 24px 4px; }
 `;
 
@@ -115,24 +122,31 @@ export class QuestionPicker {
 
     const text = document.createElement('div');
     text.className = 'qp-text';
-    const preview = previewOf(prompt.text);
-    text.textContent = preview.text;
-    main.append(meta, text);
+    const flat = prompt.text.replace(/\s+/g, ' ').trim();
+    text.textContent = flat;
 
-    if (preview.clipped) {
-      let expanded = false;
-      const more = document.createElement('button');
-      more.className = 'qp-more';
-      more.textContent = 'Read more';
-      more.addEventListener('click', (event) => {
-        // Inside a <label>, a click would also toggle the checkbox.
-        event.preventDefault();
-        expanded = !expanded;
-        text.textContent = expanded ? prompt.text : preview.text;
-        more.textContent = expanded ? 'Show less' : 'Read more';
-      });
-      main.append(more);
-    }
+    let expanded = false;
+    const more = document.createElement('button');
+    more.className = 'qp-more';
+    more.textContent = 'Read more';
+    more.hidden = true;
+    more.addEventListener('click', (event) => {
+      // Inside a <label>, a click would also toggle the checkbox.
+      event.preventDefault();
+      expanded = !expanded;
+      text.classList.toggle('open', expanded);
+      text.textContent = expanded ? prompt.text : flat;
+      more.textContent = expanded ? 'Show less' : 'Read more';
+    });
+    // Only offer "Read more" when the clamp actually cut something, which depends on panel width.
+    new ResizeObserver(() => {
+      if (!expanded) more.hidden = text.scrollHeight <= text.clientHeight + 1;
+    }).observe(text);
+
+    const head = document.createElement('div');
+    head.className = 'qp-head';
+    head.append(meta, more);
+    main.append(head, text);
 
     row.append(box, main);
     this.items.set(prompt.id, { row, box });

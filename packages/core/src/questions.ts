@@ -1,8 +1,5 @@
 import type { ConversationTree, TreeNode } from './types.js';
 
-/** How much of a prompt the picker shows before "read more". */
-export const PROMPT_PREVIEW_CHARS = 320;
-
 export interface Prompt {
   id: string;
   /** Full text. Sources that only carry previews in the tree must supply this separately. */
@@ -22,10 +19,6 @@ export function listPrompts(tree: ConversationTree, fullText?: Map<string, strin
     createdAt: node.createdAt,
     onCurrentPath: node.onCurrentPath,
   }));
-}
-
-export function previewOf(text: string, max = PROMPT_PREVIEW_CHARS): { text: string; clipped: boolean } {
-  return text.length > max ? { text: `${text.slice(0, max)}…`, clipped: true } : { text, clipped: false };
 }
 
 /** The export: each selected prompt in full, numbered, ready to paste into a new thread. */
