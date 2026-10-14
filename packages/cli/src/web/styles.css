@@ -24,7 +24,7 @@ code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; 
 
 /* Sidebar ---------------------------------------------------------------- */
 #sidebar { display: flex; flex-direction: column; border-right: 1px solid var(--line); min-height: 0; background: var(--panel); }
-.brand { padding: 14px 16px 10px; font-weight: 600; letter-spacing: -.01em; }
+.brand { display: flex; align-items: center; gap: 8px; padding: 14px 16px 10px; font-weight: 600; letter-spacing: -.01em; }
 #filter {
   margin: 0 12px 10px; padding: 7px 10px; border-radius: 8px; font: inherit;
   border: 1px solid var(--line); background: var(--bg); color: var(--ink);
@@ -35,8 +35,9 @@ code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; 
   border: 1px solid transparent; border-radius: 9px; background: none; color: inherit;
   font: inherit; cursor: pointer;
 }
+.row { transition: background .12s, border-color .12s; }
 .row:hover { background: var(--bg); border-color: var(--line); }
-.row.on { border-color: var(--accent); }
+.row.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .row .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row .sub { color: var(--muted); font-size: 11px; margin-top: 2px; display: flex; gap: 8px; flex-wrap: wrap; }
 .row .sub .warn { color: var(--accent); }
@@ -49,34 +50,54 @@ main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 header { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
 .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stats, .status { color: var(--muted); font-size: 12px; }
+.stats { display: flex; gap: 6px; font-size: 11px; white-space: nowrap; }
+.stat { padding: 2px 8px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); }
+.stat b { color: var(--ink); font-weight: 600; }
 .spacer { flex: 1; }
-.tool { font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 7px; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.tool {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 7px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  transition: border-color .15s, color .15s, background .15s;
+}
 .tool:hover { border-color: var(--accent); color: var(--accent); }
+.tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tool.icon-only { padding: 6px; border-color: transparent; background: none; color: var(--muted); }
+.tool.icon-only:hover { background: var(--bg); border-color: var(--line); color: var(--ink); }
 .tool:disabled { opacity: .5; cursor: default; border-color: var(--line); color: var(--ink); }
 .tool.on { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .canvas { position: relative; flex: 1; overflow: hidden; background: var(--panel); }
+.empty-state {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 24px; text-align: center; color: var(--muted); pointer-events: none;
+}
+.empty-state[hidden] { display: none; }
 footer { display: flex; gap: 14px; align-items: center; padding: 8px 16px; border-top: 1px solid var(--line); min-height: 36px; }
 footer.error .status { color: var(--accent); }
 .legend { display: flex; gap: 12px; align-items: center; color: var(--muted); font-size: 12px; }
 .legend span { display: flex; gap: 5px; align-items: center; }
 .swatch { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
 .swatch.bar { width: 9px; height: 3px; border-radius: 1px; background: var(--muted); }
+.swatch.fork { width: 10px; height: 10px; background: var(--panel); border: 2px solid var(--human); }
 
 .tip {
-  position: absolute; max-width: 360px; pointer-events: none; opacity: 0; transition: opacity .12s;
+  position: absolute; max-width: 360px; pointer-events: none; opacity: 0;
+  transform: translateY(3px); transition: opacity .12s, transform .12s;
   padding: 9px 11px; border-radius: 9px; background: var(--bg); border: 1px solid var(--line);
   box-shadow: 0 8px 24px rgba(0,0,0,.22); white-space: pre-wrap; z-index: 2;
 }
-.tip.on { opacity: 1; }
+.tip.on { opacity: 1; transform: none; }
 .who { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 4px; }
 
 /* Detail / diff panel ---------------------------------------------------- */
 .panel {
   width: 460px; border-left: 1px solid var(--line); background: var(--panel);
   display: flex; flex-direction: column; min-height: 0; overflow: hidden;
+  animation: panel-in .2s cubic-bezier(.2, .8, .2, 1);
 }
+.panel[hidden] { display: none; }
 .panel.wide { width: 780px; }
-.panel-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.panel-head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; border-bottom: 1px solid var(--line); }
 .panel-head .who { margin: 0; }
 .panel-body { overflow: auto; padding: 14px; min-height: 0; }
 .section { margin-bottom: 18px; }
@@ -98,8 +119,14 @@ details.step pre { margin: 0; padding: 9px 10px; border-top: 1px solid var(--lin
 .diff-col h4 { position: sticky; top: 0; background: var(--panel); padding-bottom: 6px; }
 .diff-col.left h4 { color: var(--diff-left); }
 .diff-col.right h4 { color: var(--diff-right); }
-.step-card { border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; margin-bottom: 7px; background: var(--bg); }
+.step-card { border: 1px solid var(--line); border-radius: 9px; padding: 9px 10px; margin-bottom: 7px; background: var(--bg); cursor: pointer; transition: border-color .15s; }
+.step-card:hover { border-color: var(--muted); }
 .step-card .who { margin-bottom: 3px; }
 .step-card .preview { overflow-wrap: anywhere; }
 .empty { color: var(--muted); padding: 24px 4px; }
 .ancestor { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+
+@keyframes panel-in { from { opacity: 0; transform: translateX(14px); } }
+@media (prefers-reduced-motion: reduce) {
+  .panel, .tip, .tool, .row { animation: none !important; transition: none !important; }
+}

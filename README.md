@@ -45,9 +45,11 @@ machine) and opens a browser. `--port <n>` and `--no-open` are available.
 - Depth runs left to right; every ending gets its own row.
 - Blue dots are your messages, sand dots are Claude's.
 - The orange path is the branch that is currently live; the ring marks its end.
-- A number beside a node is its child count. Those are the fork points.
+- A hollow node with a number in it is a fork point; the number is its child count.
+- Each ending is labelled with the prompt that set its branch apart.
 - A bar under a node means that turn wrote files or ran commands (CLI only).
-- Hover for a preview, scroll to zoom, drag to pan, **Fit** to re-centre.
+- Hover for a preview and to light the path back to the start, scroll to zoom,
+  drag to pan, **Fit** to re-centre.
 
 In the CLI viewer, click any turn to read it in full: message text, files
 written, commands run, and every tool call with its arguments and output.

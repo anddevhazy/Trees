@@ -2,11 +2,13 @@ import './styles.css';
 import { buildTree, commonAncestor, countForks, countLeaves, listPrompts } from '@claude-trees/core';
 import type { ConversationTree, TreeNode } from '@claude-trees/core';
 import { CANVAS_CSS, TreeCanvas } from '@claude-trees/core/canvas';
+import { icon, logo } from '@claude-trees/core/icons';
+import { MARKDOWN_CSS, renderMarkdown } from '@claude-trees/core/markdown';
 import { PICKER_CSS, QuestionPicker } from '@claude-trees/core/question-picker';
 import { api, type NodeDetail, type ProjectSummary, type SessionSummary } from './api';
 
 const style = document.createElement('style');
-style.textContent = `${CANVAS_CSS}\n${PICKER_CSS}`;
+style.textContent = `${CANVAS_CSS}\n${PICKER_CSS}\n${MARKDOWN_CSS}`;
 document.head.append(style);
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -16,6 +18,8 @@ const titleEl = el('title');
 const statsEl = el('stats');
 const statusEl = el('status');
 const canvasEl = el('canvas');
+const emptyEl = el('empty');
+const emptyTextEl = el('empty-text');
 const tipEl = el('tip');
 const panelEl = el('panel');
 const compareBtn = el<HTMLButtonElement>('compare');
@@ -53,6 +57,20 @@ function setStatus(message: string, isError = false): void {
 
 function fail(error: unknown): void {
   setStatus(error instanceof Error ? error.message : String(error), true);
+}
+
+function closePanel(): void {
+  panelEl.hidden = true;
+  canvas.setSelected(null);
+}
+
+function stat(count: number, label: string): HTMLElement {
+  const chip = document.createElement('span');
+  chip.className = 'stat';
+  const number = document.createElement('b');
+  number.textContent = String(count);
+  chip.append(number, ` ${label}`);
+  return chip;
 }
 
 const relative = (iso: string | null): string => {
@@ -171,9 +189,10 @@ async function openSession(session: SessionSummary): Promise<void> {
   state.session = session;
   state.picks = [];
   setComparing(false);
-  panelEl.hidden = true;
+  closePanel();
   renderSidebar();
   setStatus('Loading session…');
+  if (!state.tree) emptyTextEl.textContent = 'Loading session…';
   try {
     const payload = await api.session(state.openProject!.slug, session.id);
     const tree = buildTree({
@@ -184,13 +203,18 @@ async function openSession(session: SessionSummary): Promise<void> {
     });
     state.tree = tree;
     titleEl.textContent = payload.name;
-    const merged = payload.mergedSessions > 1 ? ` · ${payload.mergedSessions} forked files merged` : '';
-    statsEl.textContent =
-      `${tree.byId.size} turns · ${countForks(tree)} forks · ${countLeaves(tree)} endings${merged}`;
+    statsEl.replaceChildren(
+      stat(tree.byId.size, 'turns'),
+      stat(countForks(tree), 'forks'),
+      stat(countLeaves(tree), 'endings'),
+    );
+    if (payload.mergedSessions > 1) statsEl.append(stat(payload.mergedSessions, 'forked files merged'));
+    emptyEl.hidden = true;
     canvas.render(tree);
     setStatus('Click a turn to read it. Scroll to zoom, drag to pan.');
   } catch (error) {
     fail(error);
+    if (!state.tree) emptyTextEl.textContent = 'That session could not be loaded.';
   }
 }
 
@@ -199,7 +223,8 @@ async function openSession(session: SessionSummary): Promise<void> {
 function setComparing(on: boolean): void {
   state.comparing = on;
   compareBtn.classList.toggle('on', on);
-  compareBtn.textContent = on ? 'Comparing — click 2 turns' : 'Compare branches';
+  compareBtn.replaceChildren(icon('compare'), on ? 'Comparing — click 2 turns' : 'Compare branches');
+  if (on) canvas.setSelected(null);
   if (!on) {
     state.picks = [];
     canvas.setPicks([]);
@@ -208,7 +233,7 @@ function setComparing(on: boolean): void {
 
 compareBtn.addEventListener('click', () => {
   setComparing(!state.comparing);
-  if (!state.comparing) panelEl.hidden = true;
+  closePanel();
 });
 
 async function onSelect(node: TreeNode): Promise<void> {
@@ -265,11 +290,11 @@ function panelShell(titleText: string, wide: boolean): HTMLElement {
   const spacer = document.createElement('div');
   spacer.className = 'spacer';
   const close = document.createElement('button');
-  close.className = 'tool';
-  close.textContent = 'Close';
-  close.addEventListener('click', () => {
-    panelEl.hidden = true;
-  });
+  close.className = 'tool icon-only';
+  close.title = 'Close';
+  close.setAttribute('aria-label', 'Close');
+  close.append(icon('close', 16));
+  close.addEventListener('click', closePanel);
   head.append(who, spacer, close);
 
   const body = document.createElement('div');
@@ -280,6 +305,7 @@ function panelShell(titleText: string, wide: boolean): HTMLElement {
 
 async function showDetail(node: TreeNode): Promise<void> {
   const body = panelShell(heading(node), false);
+  canvas.setSelected(node.id);
   body.textContent = 'Loading…';
   let detail: NodeDetail;
   try {
@@ -293,7 +319,10 @@ async function showDetail(node: TreeNode): Promise<void> {
 
   const text = document.createElement('div');
   text.className = 'section body-text';
-  text.textContent = detail.text || '(no message text — this turn was only tool work)';
+  // Prompts are shown as typed; only Claude's replies are Markdown.
+  if (!detail.text) text.textContent = '(no message text — this turn was only tool work)';
+  else if (detail.sender === 'assistant') text.replaceChildren(renderMarkdown(detail.text));
+  else text.textContent = detail.text;
   body.append(text);
 
   const files = chips('Files written', detail.meta.filesTouched, true);
@@ -342,6 +371,7 @@ async function showQuestions(): Promise<void> {
     return;
   }
   setComparing(false);
+  canvas.setSelected(null);
   const body = panelShell('Questions you asked', false);
   body.textContent = 'Loading prompts…';
   let texts: Record<string, string>;
@@ -452,10 +482,15 @@ function showTip(node: TreeNode | null, screen: { x: number; y: number }): void 
 
 /* Boot --------------------------------------------------------------------- */
 
+el('brand').prepend(logo());
+emptyEl.prepend(logo(40));
+el('questions').prepend(icon('questions'));
+compareBtn.prepend(icon('compare'));
+el('fit').prepend(icon('fit'));
 el('fit').addEventListener('click', () => canvas.fit());
 filterEl.addEventListener('input', renderSidebar);
 window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') panelEl.hidden = true;
+  if (event.key === 'Escape') closePanel();
 });
 
 api

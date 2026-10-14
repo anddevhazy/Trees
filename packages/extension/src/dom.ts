@@ -120,3 +120,20 @@ export function installDebugHelper(): void {
     },
   });
 }
+
+/**
+ * Whether claude.ai is showing its dark theme, which is a setting of its own
+ * and need not match the OS. Falls back to the page background, then the OS.
+ */
+export function pageIsDark(): boolean {
+  const mode = document.documentElement.dataset.mode;
+  if (mode === 'dark' || mode === 'light') return mode === 'dark';
+
+  for (const el of [document.body, document.documentElement]) {
+    const colour = getComputedStyle(el).backgroundColor;
+    if (!colour.startsWith('rgb')) continue;
+    const [r, g, b, alpha = 1] = (colour.match(/[\d.]+/g) ?? []).map(Number);
+    if (alpha > 0.5) return 0.2126 * r + 0.7152 * g + 0.0722 * b < 128;
+  }
+  return matchMedia('(prefers-color-scheme: dark)').matches;
+}
