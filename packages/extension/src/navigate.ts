@@ -1,4 +1,4 @@
-import { click, findMessageElements, findPagerFor, scrollToMessage } from './dom';
+import { click, findMessageElements, findPagerFor, messageElementAt, scrollToMessage } from './dom';
 import { pathTo } from '@claude-trees/core';
 import type { ConversationTree } from '@claude-trees/core';
 
@@ -51,7 +51,7 @@ export async function switchToNode(
   for (let step = 0; step < MAX_STEPS; step += 1) {
     if (tree.currentPathIds.has(targetId)) {
       const index = tree.currentPath.findIndex((node) => node.id === targetId);
-      if (index >= 0) scrollToMessage(index);
+      if (index >= 0) await scrollToMessage(index, tree.currentPath.length);
       return tree;
     }
 
@@ -67,19 +67,27 @@ export async function switchToNode(
       throw new NavigationError('The visible conversation is shorter than the branch point.');
     }
 
-    const elements = findMessageElements();
-    if (elements.length !== tree.currentPath.length) {
+    const total = tree.currentPath.length;
+    const element = await messageElementAt(divergeIndex, total);
+    if (!element) {
       throw new NavigationError(
-        `Found ${elements.length} messages on screen but ${tree.currentPath.length} in the API response. ` +
-          'Scroll the conversation to the top so every turn is mounted, or re-tune MESSAGE_SELECTORS in src/dom.ts.',
+        `Found ${findMessageElements().length} messages on screen but ${total} in the API response, ` +
+          'even after scrolling to the top. MESSAGE_SELECTORS in src/dom.ts probably need re-tuning.',
       );
     }
 
-    const element = elements[divergeIndex];
     const pager = findPagerFor(element);
     if (!pager) {
       throw new NavigationError(
         `No branch arrows found on message ${divergeIndex + 1}. Run __claudeTreesDebug() in the console to inspect.`,
+      );
+    }
+    // Guards the end-of-path alignment in messageElementAt: the wrong turn would
+    // show a different counter.
+    if (pager.current !== shown.siblingIndex + 1 || pager.total !== shown.siblingCount) {
+      throw new NavigationError(
+        `Message ${divergeIndex + 1} shows ${pager.current}/${pager.total} but the API says ` +
+          `${shown.siblingIndex + 1}/${shown.siblingCount}. MESSAGE_SELECTORS in src/dom.ts probably need re-tuning.`,
       );
     }
 

@@ -90,14 +90,60 @@ export function findPagerFor(message: HTMLElement): Pager | null {
   return null;
 }
 
+/** How long to wait for claude.ai to mount older turns after scrolling to the top. */
+const LOAD_EARLIER_TIMEOUT_MS = 3_000;
+const LOAD_EARLIER_POLL_MS = 100;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function scrollContainerOf(element: HTMLElement): HTMLElement {
+  for (let el = element.parentElement; el; el = el.parentElement) {
+    const { overflowY } = getComputedStyle(el);
+    if ((overflowY === 'auto' || overflowY === 'scroll') && el.scrollHeight > el.clientHeight) return el;
+  }
+  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
+}
+
+/**
+ * claude.ai only mounts the most recent turns and loads older ones as you
+ * scroll up. Keep scrolling to the top until `total` turns are mounted or no
+ * more appear.
+ */
+async function loadEarlierMessages(total: number): Promise<HTMLElement[]> {
+  let elements = findMessageElements();
+  while (elements.length && elements.length < total) {
+    const before = elements.length;
+    scrollContainerOf(elements[0]).scrollTop = 0;
+    const deadline = Date.now() + LOAD_EARLIER_TIMEOUT_MS;
+    while (elements.length === before && Date.now() < deadline) {
+      await sleep(LOAD_EARLIER_POLL_MS);
+      elements = findMessageElements();
+    }
+    if (elements.length === before) break;
+  }
+  return elements;
+}
+
+/**
+ * The rendered turn at `index` of a path `total` turns long. Mounted turns are
+ * always the most recent ones, so they line up with the end of the path; older
+ * turns are loaded on demand.
+ */
+export async function messageElementAt(index: number, total: number): Promise<HTMLElement | null> {
+  let elements = findMessageElements();
+  if (elements.length < total && index < total - elements.length) {
+    elements = await loadEarlierMessages(total);
+  }
+  return elements[index - (total - elements.length)] ?? null;
+}
+
 export function click(element: HTMLElement): void {
   element.scrollIntoView({ block: 'center', behavior: 'auto' });
   element.click();
 }
 
-export function scrollToMessage(index: number): void {
-  const elements = findMessageElements();
-  const target = elements[index];
+export async function scrollToMessage(index: number, total: number): Promise<void> {
+  const target = await messageElementAt(index, total);
   if (!target) return;
   target.scrollIntoView({ block: 'center', behavior: 'smooth' });
   target.animate(
