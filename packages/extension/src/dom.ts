@@ -90,9 +90,14 @@ export function findPagerFor(message: HTMLElement): Pager | null {
   return null;
 }
 
-/** How long to wait for claude.ai to mount older turns after scrolling to the top. */
-const LOAD_EARLIER_TIMEOUT_MS = 3_000;
-const LOAD_EARLIER_POLL_MS = 100;
+/** How long claude.ai gets to re-render after we scroll. */
+const SCROLL_SETTLE_MS = 200;
+/** How long to wait for claude.ai to fetch older turns once we hit the top or bottom. */
+const EDGE_LOAD_TIMEOUT_MS = 3_000;
+const EDGE_LOAD_POLL_MS = 100;
+const MAX_SCROLL_STEPS = 80;
+/** Characters of a message's text used to recognise it on screen. */
+const FINGERPRINT_LENGTH = 32;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -104,37 +109,88 @@ function scrollContainerOf(element: HTMLElement): HTMLElement {
   return (document.scrollingElement as HTMLElement | null) ?? document.documentElement;
 }
 
+/** Letters and digits only, so markdown source and rendered text compare equal. */
+function normalise(text: string): string {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+}
+
+function fingerprint(markdown: string): string {
+  const visible = markdown
+    .replace(/\]\([^)]*\)/g, ']') // link targets are not rendered
+    .replace(/^```\S*/gm, ''); // nor are code fence languages
+  return normalise(visible).slice(0, FINGERPRINT_LENGTH);
+}
+
 /**
- * claude.ai only mounts the most recent turns and loads older ones as you
- * scroll up. Keep scrolling to the top until `total` turns are mounted or no
- * more appear.
+ * Which path index the first mounted turn sits at. claude.ai only keeps a
+ * window of turns mounted, so we recognise them by text: every turn votes for
+ * the offsets its text is consistent with, and the window lands where most
+ * agree. Returns null when nothing matches.
  */
-async function loadEarlierMessages(total: number): Promise<HTMLElement[]> {
+function alignToPath(elements: HTMLElement[], prints: string[]): number | null {
+  const votes = new Map<number, number>();
+  elements.forEach((element, i) => {
+    const rendered = normalise(element.textContent ?? '');
+    prints.forEach((print, j) => {
+      if (print && j >= i && rendered.includes(print)) votes.set(j - i, (votes.get(j - i) ?? 0) + 1);
+    });
+  });
+  let best: number | null = null;
+  let bestVotes = 0;
+  for (const [offset, count] of votes) {
+    if (count > bestVotes && offset + elements.length <= prints.length) [best, bestVotes] = [offset, count];
+  }
+  return best;
+}
+
+function sameMessages(a: HTMLElement[], b: HTMLElement[]): boolean {
+  return a.length === b.length && a.every((el, i) => el === b[i]);
+}
+
+async function waitForNewMessages(previous: HTMLElement[]): Promise<HTMLElement[]> {
+  const deadline = Date.now() + EDGE_LOAD_TIMEOUT_MS;
   let elements = findMessageElements();
-  while (elements.length && elements.length < total) {
-    const before = elements.length;
-    scrollContainerOf(elements[0]).scrollTop = 0;
-    const deadline = Date.now() + LOAD_EARLIER_TIMEOUT_MS;
-    while (elements.length === before && Date.now() < deadline) {
-      await sleep(LOAD_EARLIER_POLL_MS);
-      elements = findMessageElements();
-    }
-    if (elements.length === before) break;
+  while (sameMessages(elements, previous) && Date.now() < deadline) {
+    await sleep(EDGE_LOAD_POLL_MS);
+    elements = findMessageElements();
   }
   return elements;
 }
 
 /**
- * The rendered turn at `index` of a path `total` turns long. Mounted turns are
- * always the most recent ones, so they line up with the end of the path; older
- * turns are loaded on demand.
+ * The rendered turn at `index` of `path`, scrolling the conversation until it
+ * is mounted. Returns null if it never appears.
  */
-export async function messageElementAt(index: number, total: number): Promise<HTMLElement | null> {
+export async function messageElementAt(path: readonly { text: string }[], index: number): Promise<HTMLElement | null> {
+  const prints = path.map((node) => fingerprint(node.text));
   let elements = findMessageElements();
-  if (elements.length < total && index < total - elements.length) {
-    elements = await loadEarlierMessages(total);
+
+  for (let step = 0; step < MAX_SCROLL_STEPS && elements.length; step += 1) {
+    if (elements.length === path.length) return elements[index];
+    const offset = alignToPath(elements, prints);
+    if (offset === null) return null;
+    if (index >= offset && index < offset + elements.length) return elements[index - offset];
+
+    // Leap most of the way when the target is far off, but never by less than
+    // most of a viewport so we keep moving.
+    const container = scrollContainerOf(elements[0]);
+    const nearest = index < offset ? offset : offset + elements.length - 1;
+    const estimate = ((index - nearest) * container.scrollHeight) / path.length;
+    const minimum = container.clientHeight * 0.8;
+    const before = container.scrollTop;
+    container.scrollTop += Math.sign(estimate) * Math.max(minimum, Math.abs(estimate) * 0.8);
+
+    if (container.scrollTop === before) {
+      // At the edge: claude.ai may still be fetching more turns.
+      const next = await waitForNewMessages(elements);
+      if (sameMessages(next, elements)) return null;
+      elements = next;
+    } else {
+      await sleep(SCROLL_SETTLE_MS);
+      elements = findMessageElements();
+    }
   }
-  return elements[index - (total - elements.length)] ?? null;
+  return null;
 }
 
 export function click(element: HTMLElement): void {
@@ -142,8 +198,8 @@ export function click(element: HTMLElement): void {
   element.click();
 }
 
-export async function scrollToMessage(index: number, total: number): Promise<void> {
-  const target = await messageElementAt(index, total);
+export async function scrollToMessage(path: readonly { text: string }[], index: number): Promise<void> {
+  const target = await messageElementAt(path, index);
   if (!target) return;
   target.scrollIntoView({ block: 'center', behavior: 'smooth' });
   target.animate(

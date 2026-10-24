@@ -51,7 +51,7 @@ export async function switchToNode(
   for (let step = 0; step < MAX_STEPS; step += 1) {
     if (tree.currentPathIds.has(targetId)) {
       const index = tree.currentPath.findIndex((node) => node.id === targetId);
-      if (index >= 0) await scrollToMessage(index, tree.currentPath.length);
+      if (index >= 0) await scrollToMessage(tree.currentPath, index);
       return tree;
     }
 
@@ -67,12 +67,11 @@ export async function switchToNode(
       throw new NavigationError('The visible conversation is shorter than the branch point.');
     }
 
-    const total = tree.currentPath.length;
-    const element = await messageElementAt(divergeIndex, total);
+    const element = await messageElementAt(tree.currentPath, divergeIndex);
     if (!element) {
       throw new NavigationError(
-        `Found ${findMessageElements().length} messages on screen but ${total} in the API response, ` +
-          'even after scrolling to the top. MESSAGE_SELECTORS in src/dom.ts probably need re-tuning.',
+        `Could not find message ${divergeIndex + 1} of ${tree.currentPath.length} on screen ` +
+          `(${findMessageElements().length} mounted). MESSAGE_SELECTORS in src/dom.ts may need re-tuning.`,
       );
     }
 
