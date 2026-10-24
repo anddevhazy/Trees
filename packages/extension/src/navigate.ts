@@ -1,4 +1,4 @@
-import { click, findMessageElements, findPagerFor, messageElementAt, scrollToMessage } from './dom';
+import { click, describeMatch, findMessageElements, findPagerFor, messageElementAt, scrollToMessage } from './dom';
 import { pathTo } from '@claude-trees/core';
 import type { ConversationTree } from '@claude-trees/core';
 
@@ -78,7 +78,7 @@ export async function switchToNode(
     const pager = findPagerFor(element);
     if (!pager) {
       throw new NavigationError(
-        `No branch arrows found on message ${divergeIndex + 1}. Run __claudeTreesDebug() in the console to inspect.`,
+        `No branch arrows found on message ${divergeIndex + 1} (${describeMatch(element, tree.currentPath, divergeIndex)}).`,
       );
     }
     // Guards the end-of-path alignment in messageElementAt: the wrong turn would

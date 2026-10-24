@@ -211,6 +211,14 @@ export async function messageElementAt(path: readonly { text: string }[], index:
   return null;
 }
 
+/** Why a looked-up turn might be the wrong one, for error messages. */
+export function describeMatch(element: HTMLElement, path: readonly { text: string }[], index: number): string {
+  const expected = fingerprint(path[index]?.text ?? '');
+  const rendered = normalise(element.textContent ?? '');
+  const verdict = expected && rendered.includes(expected) ? 'text matches' : 'TEXT MISMATCH';
+  return `${verdict}; expected "${expected}", on screen "${rendered.slice(0, FINGERPRINT_LENGTH)}"`;
+}
+
 export function click(element: HTMLElement): void {
   element.scrollIntoView({ block: 'center', behavior: 'auto' });
   element.click();
