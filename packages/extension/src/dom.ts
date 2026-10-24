@@ -219,6 +219,30 @@ export function describeMatch(element: HTMLElement, path: readonly { text: strin
   return `${verdict}; expected "${expected}", on screen "${rendered.slice(0, FINGERPRINT_LENGTH)}"`;
 }
 
+/** Hovers a turn, since claude.ai can render its action bar (and pager) only on hover. */
+export async function hover(element: HTMLElement): Promise<void> {
+  const rect = element.getBoundingClientRect();
+  const init = { bubbles: true, clientX: rect.left + rect.width / 2, clientY: rect.top + Math.min(rect.height / 2, 40) };
+  for (const type of ['pointerover', 'pointerenter', 'mouseover', 'mouseenter', 'pointermove', 'mousemove']) {
+    const event = type.startsWith('pointer') ? new PointerEvent(type, init) : new MouseEvent(type, init);
+    element.dispatchEvent(event);
+  }
+  await sleep(SCROLL_SETTLE_MS);
+}
+
+/** Where the nearest thing that looks like a pager counter is, for error messages. */
+export function describePagerSurroundings(element: HTMLElement): string {
+  const loose = /\d+\s*\/\s*\d+/;
+  let scope: HTMLElement | null = element;
+  for (let depth = 0; depth <= 12 && scope; depth += 1, scope = scope.parentElement) {
+    const counter = [...scope.querySelectorAll<HTMLElement>('*')].find(
+      (el) => el.children.length <= 3 && loose.test(el.textContent ?? '') && (el.textContent ?? '').length < 20,
+    );
+    if (counter) return `nearest counter "${counter.textContent?.trim()}" ${depth} levels up`;
+  }
+  return 'no counter within 12 levels';
+}
+
 export function click(element: HTMLElement): void {
   element.scrollIntoView({ block: 'center', behavior: 'auto' });
   element.click();
