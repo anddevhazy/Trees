@@ -157,19 +157,37 @@ async function waitForNewMessages(previous: HTMLElement[]): Promise<HTMLElement[
   return elements;
 }
 
+/** The path last looked up, kept for `__claudeTreesDebug()`. */
+let lastPrints: string[] = [];
+
+function inView(element: HTMLElement): boolean {
+  const rect = element.getBoundingClientRect();
+  return rect.bottom > 0 && rect.top < window.innerHeight;
+}
+
 /**
  * The rendered turn at `index` of `path`, scrolling the conversation until it
  * is mounted. Returns null if it never appears.
  */
 export async function messageElementAt(path: readonly { text: string }[], index: number): Promise<HTMLElement | null> {
   const prints = path.map((node) => fingerprint(node.text));
+  lastPrints = prints;
   let elements = findMessageElements();
 
   for (let step = 0; step < MAX_SCROLL_STEPS && elements.length; step += 1) {
     if (elements.length === path.length) return elements[index];
     const offset = alignToPath(elements, prints);
     if (offset === null) return null;
-    if (index >= offset && index < offset + elements.length) return elements[index - offset];
+    if (index >= offset && index < offset + elements.length) {
+      const element = elements[index - offset];
+      if (inView(element)) return element;
+      // Turns just off screen can be rendered without their controls, so bring
+      // the target into view and look it up again once it has re-rendered.
+      element.scrollIntoView({ block: 'center', behavior: 'auto' });
+      await sleep(SCROLL_SETTLE_MS);
+      elements = findMessageElements();
+      continue;
+    }
 
     // Leap most of the way when the target is far off, but never by less than
     // most of a viewport so we keep moving.
@@ -218,7 +236,16 @@ export function installDebugHelper(): void {
       console.log('[claude-trees] messages:', messages.length, messages);
       // eslint-disable-next-line no-console
       console.log('[claude-trees] pagers:', pagers.filter((p) => p.pager));
-      return { messages, pagers };
+      const offset = alignToPath(messages, lastPrints);
+      const alignment = messages.map((el, i) => ({
+        pathIndex: offset === null ? null : offset + i,
+        expected: offset === null ? null : lastPrints[offset + i],
+        matches: offset !== null && normalise(el.textContent ?? '').includes(lastPrints[offset + i]),
+        onScreen: normalise(el.textContent ?? '').slice(0, 60),
+      }));
+      // eslint-disable-next-line no-console
+      console.table(alignment);
+      return { messages, pagers, alignment };
     },
   });
 }
