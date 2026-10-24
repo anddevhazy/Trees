@@ -79,10 +79,17 @@ function readPager(container: HTMLElement): Pager | null {
   };
 }
 
-/** Finds the `< 2/3 >` control belonging to a message, searching its ancestors. */
+/**
+ * Finds the `< 2/3 >` control belonging to a message, searching its ancestors.
+ * Stops before an ancestor that also holds another turn, whose pager it would
+ * otherwise pick up.
+ */
 export function findPagerFor(message: HTMLElement): Pager | null {
+  const others = findMessageElements().filter((el) => el !== message);
   let scope: HTMLElement | null = message;
   for (let i = 0; i <= PAGER_ANCESTOR_DEPTH && scope; i += 1) {
+    const current: HTMLElement = scope;
+    if (others.some((el) => current.contains(el))) return null;
     const pager = readPager(scope);
     if (pager) return pager;
     scope = scope.parentElement;

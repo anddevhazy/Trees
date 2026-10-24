@@ -91,7 +91,7 @@ export async function switchToNode(
     if (pager.current !== shown.siblingIndex + 1 || pager.total !== shown.siblingCount) {
       throw new NavigationError(
         `Message ${divergeIndex + 1} shows ${pager.current}/${pager.total} but the API says ` +
-          `${shown.siblingIndex + 1}/${shown.siblingCount}. MESSAGE_SELECTORS in src/dom.ts probably need re-tuning.`,
+          `${shown.siblingIndex + 1}/${shown.siblingCount} (${describeMatch(element, tree.currentPath, divergeIndex)}).`,
       );
     }
 
