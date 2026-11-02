@@ -48,13 +48,21 @@ export class PanelResizer {
     this.handle.addEventListener('pointerdown', this.onPointerDown);
     this.handle.addEventListener('dblclick', () => this.set(this.fallback));
     this.handle.addEventListener('keydown', this.onKeyDown);
+    // Re-clamp when the window shrinks, without losing the chosen width for when it grows back.
+    window.addEventListener('resize', () => {
+      if (this.mode && !this.panel.hidden) this.apply(this.preferred());
+    });
   }
 
   /** Applies the width last set in this mode, or the given default. */
   use(mode: string, fallback: number): void {
     this.mode = mode;
     this.fallback = fallback;
-    this.apply(this.widths.get(mode) ?? fallback);
+    this.apply(this.preferred());
+  }
+
+  private preferred(): number {
+    return this.widths.get(this.mode) ?? this.fallback;
   }
 
   private set(width: number): void {
