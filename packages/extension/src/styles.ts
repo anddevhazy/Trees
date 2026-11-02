@@ -68,7 +68,7 @@ button.tool.icon-only:hover { background: var(--panel); border-color: var(--line
 .empty-state.loading .trees-skeleton { display: block; }
 
 .panel {
-  width: 400px; border-left: 1px solid var(--line); background: var(--panel);
+  flex: none; width: 400px; border-left: 1px solid var(--line); background: var(--panel);
   display: flex; flex-direction: column; min-height: 0; overflow: hidden;
   animation: panel-in .2s cubic-bezier(.2, .8, .2, 1);
 }

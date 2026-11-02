@@ -5,10 +5,11 @@ import { CANVAS_CSS, placeTip, TreeCanvas } from '@claude-trees/core/canvas';
 import { icon, logo, skeleton } from '@claude-trees/core/icons';
 import { MARKDOWN_CSS, renderMarkdown } from '@claude-trees/core/markdown';
 import { PICKER_CSS, QuestionPicker } from '@claude-trees/core/question-picker';
+import { PanelResizer, RESIZE_CSS } from '@claude-trees/core/resize';
 import { api, type NodeDetail, type ProjectSummary, type SessionSummary } from './api';
 
 const style = document.createElement('style');
-style.textContent = `${CANVAS_CSS}\n${PICKER_CSS}\n${MARKDOWN_CSS}`;
+style.textContent = `${CANVAS_CSS}\n${PICKER_CSS}\n${MARKDOWN_CSS}\n${RESIZE_CSS}`;
 document.head.append(style);
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
@@ -23,6 +24,18 @@ const emptyTextEl = el('empty-text');
 const tipEl = el('tip');
 const panelEl = el('panel');
 const compareBtn = el<HTMLButtonElement>('compare');
+const mainEl = document.querySelector('main')!;
+
+const sidebarResizer = new PanelResizer(el('sidebar'), {
+  edge: 'right', neighbor: mainEl, min: 200, neighborMin: 320, label: 'Resize sidebar',
+});
+el('sidebar').after(sidebarResizer.handle);
+sidebarResizer.use('sidebar', 290);
+
+const panelResizer = new PanelResizer(panelEl, {
+  edge: 'left', neighbor: mainEl, min: 320, neighborMin: 320, label: 'Resize panel',
+});
+panelEl.before(panelResizer.handle);
 
 interface State {
   projects: ProjectSummary[];
@@ -283,7 +296,7 @@ function chips(title: string, values: string[] | undefined, write = false): HTML
 
 function panelShell(titleText: string, wide: boolean): HTMLElement {
   panelEl.hidden = false;
-  panelEl.classList.toggle('wide', wide);
+  panelResizer.use(wide ? 'wide' : 'detail', wide ? 780 : 460);
   panelEl.replaceChildren();
 
   const head = document.createElement('div');

@@ -4,6 +4,7 @@ import { CANVAS_CSS, placeTip, TreeCanvas } from '@claude-trees/core/canvas';
 import { icon, logo, skeleton, type IconName } from '@claude-trees/core/icons';
 import { MARKDOWN_CSS, renderMarkdown } from '@claude-trees/core/markdown';
 import { PICKER_CSS, QuestionPicker } from '@claude-trees/core/question-picker';
+import { PanelResizer, RESIZE_CSS } from '@claude-trees/core/resize';
 import { pageIsDark } from './dom';
 import { OVERLAY_CSS } from './styles';
 
@@ -30,6 +31,7 @@ export class TreeOverlay {
   private emptyText!: HTMLElement;
   private tip!: HTMLElement;
   private panel!: HTMLElement;
+  private resizer!: PanelResizer;
   private canvas: TreeCanvas;
   private tree: ConversationTree | null = null;
   /** The node whose detail is open, and its jump button, kept in step with the tree. */
@@ -49,7 +51,7 @@ export class TreeOverlay {
 
   private build(): void {
     const style = document.createElement('style');
-    style.textContent = `${OVERLAY_CSS}\n${CANVAS_CSS}\n${PICKER_CSS}\n${MARKDOWN_CSS}`;
+    style.textContent = `${OVERLAY_CSS}\n${CANVAS_CSS}\n${PICKER_CSS}\n${MARKDOWN_CSS}\n${RESIZE_CSS}`;
 
     this.backdrop = document.createElement('div');
     this.backdrop.className = 'backdrop';
@@ -95,7 +97,10 @@ export class TreeOverlay {
 
     const main = document.createElement('div');
     main.className = 'main';
-    main.append(this.canvasEl, this.panel);
+    this.resizer = new PanelResizer(this.panel, {
+      edge: 'left', neighbor: this.canvasEl, min: 300, neighborMin: 320, label: 'Resize panel',
+    });
+    main.append(this.canvasEl, this.resizer.handle, this.panel);
 
     this.footer = document.createElement('footer');
     const legend = document.createElement('div');
@@ -253,6 +258,7 @@ export class TreeOverlay {
 
     this.panel.replaceChildren(head, body);
     this.panel.hidden = false;
+    this.resizer.use('detail', 400);
     this.shown = { id: node.id, jump };
     this.syncJump();
     this.canvas.setSelected(node.id);
@@ -284,6 +290,7 @@ export class TreeOverlay {
 
     this.panel.replaceChildren(head, body);
     this.panel.hidden = false;
+    this.resizer.use('detail', 400);
     this.setStatus(`${prompts.length} prompts across all branches. Tick the real questions, then export.`);
   }
 }
