@@ -24,7 +24,7 @@ interface RawMessage {
   text?: string;
 }
 
-interface RawConversation {
+export interface RawConversation {
   uuid: string;
   name: string;
   current_leaf_message_uuid: string | null;
@@ -91,7 +91,7 @@ function messageText(message: RawMessage): string {
  * Fetches the full message graph. `tree=True` is what makes the endpoint return
  * every branch instead of only the currently selected path.
  */
-export async function fetchTreeSource(conversationId: string): Promise<TreeSource> {
+export async function fetchConversation(conversationId: string): Promise<RawConversation> {
   const orgId = await getOrgId();
   const url =
     `/api/organizations/${orgId}/chat_conversations/${conversationId}` +
@@ -101,6 +101,11 @@ export async function fetchTreeSource(conversationId: string): Promise<TreeSourc
   if (!Array.isArray(conversation.chat_messages)) {
     throw new TreesError('Conversation payload had no chat_messages array.');
   }
+  return conversation;
+}
+
+export async function fetchTreeSource(conversationId: string): Promise<TreeSource> {
+  const conversation = await fetchConversation(conversationId);
 
   const nodes: TreeInput[] = conversation.chat_messages.map((message) => ({
     id: message.uuid,

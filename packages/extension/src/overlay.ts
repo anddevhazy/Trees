@@ -12,6 +12,8 @@ export interface OverlayHandlers {
   onRefresh: () => void;
   /** Switches claude.ai to the branch containing this node. */
   onJump: (node: TreeNode) => void;
+  /** Saves the conversation's raw JSON, every branch included. */
+  onDownload: () => void;
 }
 
 /** Matches the closing animation in styles.ts. */
@@ -76,6 +78,7 @@ export class TreeOverlay {
       this.statsEl,
       spacer,
       this.button('Questions', () => this.showQuestions(), 'questions'),
+      this.button('JSON', () => this.handlers.onDownload(), 'download'),
       this.button('Fit', () => this.canvas.fit(), 'fit'),
       this.button('Refresh', () => this.handlers.onRefresh(), 'refresh'),
       this.iconButton('Close', () => this.close()),

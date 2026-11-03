@@ -35,11 +35,16 @@ export function promptsToMarkdown(title: string, selected: Prompt[], total: numb
   return lines.join('\n');
 }
 
-export function questionsFileName(title: string): string {
+/** A conversation title made safe for a file name. */
+export function fileSlug(title: string): string {
   const slug = title
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 60);
-  return `${slug || 'conversation'}-questions.md`;
+  return slug || 'conversation';
+}
+
+export function questionsFileName(title: string): string {
+  return `${fileSlug(title)}-questions.md`;
 }

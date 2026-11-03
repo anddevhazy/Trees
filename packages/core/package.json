@@ -9,6 +9,7 @@
     "./question-picker": "./src/question-picker.ts",
     "./resize": "./src/resize.ts",
     "./markdown": "./src/markdown.ts",
-    "./icons": "./src/icons.ts"
+    "./icons": "./src/icons.ts",
+    "./download": "./src/download.ts"
   }
 }

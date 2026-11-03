@@ -8,6 +8,7 @@ const PATHS = {
   questions: ['m3 17 2 2 4-4', 'm3 7 2 2 4-4', 'M13 6h8', 'M13 12h8', 'M13 18h8'],
   compare: ['M4 4h16v16H4z', 'M12 4v16'],
   jump: ['m15 14 5-5-5-5', 'M4 20v-7a4 4 0 0 1 4-4h12'],
+  download: ['M12 3v12', 'm7 10 5 5 5-5', 'M5 21h14'],
 } as const;
 
 export type IconName = keyof typeof PATHS;

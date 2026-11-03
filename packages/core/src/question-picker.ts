@@ -1,3 +1,4 @@
+import { saveFile } from './download.js';
 import { promptsToMarkdown, questionsFileName, type Prompt } from './questions.js';
 
 /** Styles for the picker. Hosts supply the colour tokens, as for the canvas. */
@@ -174,14 +175,6 @@ export class QuestionPicker {
     const selected = this.prompts.filter((prompt) => this.ticked.has(prompt.id));
     if (!selected.length) return;
     const markdown = promptsToMarkdown(this.title, selected, this.prompts.length);
-    const url = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = questionsFileName(this.title);
-    // Content scripts render inside a shadow root, so the link goes on the page body.
-    document.body.append(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    saveFile(questionsFileName(this.title), markdown, 'text/markdown;charset=utf-8');
   }
 }

@@ -1,6 +1,7 @@
-import { buildTree } from '@claude-trees/core';
+import { buildTree, fileSlug } from '@claude-trees/core';
 import type { ConversationTree } from '@claude-trees/core';
-import { fetchTreeSource, getConversationId, TreesError } from './api';
+import { saveFile } from '@claude-trees/core/download';
+import { fetchConversation, fetchTreeSource, getConversationId, TreesError } from './api';
 import { installDebugHelper } from './dom';
 import { NavigationError, switchToNode } from './navigate';
 import { TreeOverlay } from './overlay';
@@ -34,8 +35,28 @@ function getOverlay(): TreeOverlay {
   overlay = new TreeOverlay({
     onRefresh: () => void refresh(true),
     onJump: (node) => void select(node.id),
+    onDownload: () => void download(),
   });
   return overlay;
+}
+
+/** Saves claude.ai's own response for this conversation, every branch included, untouched. */
+async function download(): Promise<void> {
+  const ui = getOverlay();
+  const conversationId = getConversationId();
+  if (!conversationId) {
+    ui.setStatus('Open a conversation first — this page has no conversation to save.', true);
+    return;
+  }
+  ui.setStatus('Fetching the conversation…');
+  try {
+    const conversation = await fetchConversation(conversationId);
+    const name = conversation.name || 'Untitled';
+    saveFile(`${fileSlug(name)}.json`, JSON.stringify(conversation, null, 2), 'application/json');
+    ui.setStatus(`Saved ${conversation.chat_messages.length} messages across every branch.`);
+  } catch (error) {
+    ui.setStatus(describe(error), true);
+  }
 }
 
 function describe(error: unknown): string {
