@@ -8,13 +8,17 @@
   </head>
   <body>
     <aside id="sidebar">
-      <div id="brand" class="brand">Claude Trees</div>
+      <div id="brand" class="brand">
+        Claude Trees
+        <button id="close-sidebar" class="tool icon-only" title="Hide projects" aria-label="Hide projects"></button>
+      </div>
       <input id="filter" type="search" placeholder="Filter…" autocomplete="off" />
       <div id="list" class="list"></div>
     </aside>
 
     <main>
       <header>
+        <button id="open-sidebar" class="tool icon-only" title="Show projects" aria-label="Show projects" hidden></button>
         <div id="title" class="title">Pick a session</div>
         <div id="stats" class="stats"></div>
         <div class="spacer"></div>

@@ -11,6 +11,7 @@ export const RESIZE_CSS = `
 .resizer:hover::after, .resizer.dragging::after, .resizer:focus-visible::after { opacity: 1; }
 .resizer:focus-visible { outline: none; }
 .resizer:has(+ [hidden]) { display: none; }
+[hidden] + .resizer { display: none; }
 `;
 
 export interface ResizeOptions {

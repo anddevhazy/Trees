@@ -24,7 +24,9 @@ code, pre, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; 
 
 /* Sidebar ---------------------------------------------------------------- */
 #sidebar { flex: none; display: flex; flex-direction: column; border-right: 1px solid var(--line); min-height: 0; background: var(--panel); }
+#sidebar[hidden] { display: none; }
 .brand { display: flex; align-items: center; gap: 8px; padding: 14px 16px 10px; font-weight: 600; letter-spacing: -.01em; }
+.brand .tool { margin: -6px -6px -6px auto; }
 #filter {
   margin: 0 12px 10px; padding: 7px 10px; border-radius: 8px; font: inherit;
   border: 1px solid var(--line); background: var(--bg); color: var(--ink);
@@ -60,6 +62,7 @@ header { display: flex; align-items: center; gap: 14px; padding: 12px 16px; bord
   border: 1px solid var(--line); background: var(--panel); color: var(--ink);
   transition: border-color .15s, color .15s, background .15s;
 }
+.tool[hidden] { display: none; }
 .tool:hover { border-color: var(--accent); color: var(--accent); }
 .tool:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .tool.icon-only { padding: 6px; border-color: transparent; background: none; color: var(--muted); }

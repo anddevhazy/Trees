@@ -32,6 +32,17 @@ const sidebarResizer = new PanelResizer(el('sidebar'), {
 el('sidebar').after(sidebarResizer.handle);
 sidebarResizer.use('sidebar', 290);
 
+const closeSidebarBtn = el<HTMLButtonElement>('close-sidebar');
+const openSidebarBtn = el<HTMLButtonElement>('open-sidebar');
+
+function setSidebarOpen(open: boolean): void {
+  el('sidebar').hidden = !open;
+  openSidebarBtn.hidden = open;
+  // Re-clamp, since the window may have shrunk while the sidebar was closed.
+  if (open) sidebarResizer.use('sidebar', 290);
+  (open ? closeSidebarBtn : openSidebarBtn).focus();
+}
+
 const panelResizer = new PanelResizer(panelEl, {
   edge: 'left', neighbor: mainEl, min: 320, neighborMin: 320, label: 'Resize panel',
 });
@@ -496,6 +507,10 @@ function showTip(node: TreeNode | null, screen: { x: number; y: number }): void 
 /* Boot --------------------------------------------------------------------- */
 
 el('brand').prepend(logo());
+closeSidebarBtn.append(icon('sidebar', 16));
+openSidebarBtn.append(icon('sidebar', 16));
+closeSidebarBtn.addEventListener('click', () => setSidebarOpen(false));
+openSidebarBtn.addEventListener('click', () => setSidebarOpen(true));
 emptyEl.prepend(logo(40), skeleton());
 el('questions').prepend(icon('questions'));
 compareBtn.prepend(icon('compare'));
